@@ -1,5 +1,13 @@
 package types
 
+import (
+	"encoding/json"
+	"fmt"
+	"regexp"
+	"strconv"
+	//"github.com/decred/politeia/politeiad/backend/gitbe"
+)
+
 type HistoryList struct {
 	SHA        string `json:"sha"`
 	Commit     Commit `json:"commit"`
@@ -27,7 +35,7 @@ type Content struct {
 	BlobURL    string `json:"blob_url"`
 	RawURL     string `json:"raw_url"`
 	ContentURL string `json:"contents_url"`
-	Data       string `json:"patch"`
+	Data       *Votes `json:"patch"`
 }
 
 type History struct {
@@ -42,9 +50,50 @@ type PiVote struct {
 	Ticket    string `json:"ticket"`
 	VoteBit   string `json:"votebit"`
 	Signature string `json:"signature"`
-	Receipt   string `json:"receipt"`
 }
+type Votes []CastVoteData
 
 type CastVoteData struct {
-	Vote PiVote `json:"castvote"`
+	Vote    *PiVote `json:"castvote"`
+	Receipt string  `json:"receipt"`
+}
+
+var journalActionFormat string
+var ProposalToken string
+
+func (v *Votes) UnmarshalJSON(b []byte) error {
+	str := string(b)
+	isMatched, err := regexp.MatchString(ProposalToken, str)
+	if !isMatched || err != nil {
+		return err
+	}
+
+	// Delete the special characters indicating addition and deletion metrics.
+	r := regexp.MustCompile(`(@{2}[\s\S]*@{2})`)
+	str = r.ReplaceAllLiteralString(str, "")
+	str, _ = strconv.Unquote(str)
+
+	str = "[" + str + "]"
+
+	journalActionFormat = `([[][\s]*{"version":"\d","action":"[add]*[del]*"})`
+	r = regexp.MustCompile(string(journalActionFormat))
+	str = r.ReplaceAllLiteralString(str, "[")
+
+	journalActionFormat = `(}[\s+]*{"version":"\d","action":"[add]*[del]*"})`
+	r = regexp.MustCompile(string(journalActionFormat))
+	str = r.ReplaceAllLiteralString(str, "},")
+
+	type votes2 Votes
+	var v2 votes2
+
+	err = json.Unmarshal([]byte(str), &v2)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(" >>>> ", len(v2))
+
+	*v = Votes(v2)
+
+	return nil
 }
