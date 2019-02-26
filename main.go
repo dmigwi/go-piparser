@@ -1,29 +1,25 @@
 package main
 
 import (
-	"fmt"
-	"io/ioutil"
-	"net/http"
+	"log"
 	"time"
+
+	"github.com/dmigwi/go-piparser/v1/proposals"
 )
 
-const gitURL = "https://api.github.com/repos/decred-proposals/mainnet/commits?path=27f87171d98b7923a1bd2bee6affed929fa2d2a6e178b5c80a9971a92a5c7f50/3/plugins/decred/ballot.journal"
-
 func main() {
-	tr := &http.Transport{
-		MaxIdleConns:       10,
-		IdleConnTimeout:    30 * time.Second,
-		DisableCompression: true,
-	}
-	client := &http.Client{Transport: tr}
+	log.Println("Please Wait... ")
+	t := time.Now()
+	parser := proposals.NewParser("", "")
 
-	resp, err := client.Get(gitURL)
+	data, err := parser.Proposal("27f87171d98b7923a1bd2bee6affed929fa2d2a6e178b5c80a9971a92a5c7f50")
 	if err != nil {
-		fmt.Printf("unexpected error occured: %v", err)
+		log.Fatalf("parser.Proposal unexpected error occured: %v", err)
+		return
 	}
 
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	// s, _ := json.Marshal(data)
+	log.Println("Data >>> ", len(data))
 
-	fmt.Println(" >>>>> ", string(body))
+	log.Println(" >>> Took :", time.Since(t))
 }
