@@ -12,7 +12,13 @@ func main() {
 	t := time.Now()
 	parser := proposals.NewParser("", "")
 
-	data, err := parser.Proposal("27f87171d98b7923a1bd2bee6affed929fa2d2a6e178b5c80a9971a92a5c7f50")
+	proposalToken := "27f87171d98b7923a1bd2bee6affed929fa2d2a6e178b5c80a9971a92a5c7f50"
+
+	if err := parser.SetProposalToken(proposalToken); err != nil {
+		log.Fatalf("parser.SetProposalToken unexpected error occured: %v", err)
+	}
+
+	data, err := parser.Proposal(proposalToken)
 	if err != nil {
 		log.Fatalf("parser.Proposal unexpected error occured: %v", err)
 		return
