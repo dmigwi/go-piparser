@@ -17,7 +17,6 @@ var journalActionFormat, proposalToken string
 
 // AltResponse is the possible alternative response returned if the default one
 // wasn't successful.
-
 type AltResponse struct {
 	Message string `json:"message"`
 	URL     string `json:"documentation_url"`
@@ -25,9 +24,6 @@ type AltResponse struct {
 
 // HistorySHAs holds a slice of the commit history SHA token strings.
 type HistorySHAs []commitSHA
-
-// 	*AltResponse
-// }
 
 // commitSHA holds the specific commit unique SHA string value.
 type commitSHA struct {
@@ -88,10 +84,19 @@ type PiVote struct {
 	Signature string `json:"signature"`
 }
 
+type GitPropDirectories struct {
+	Name string
+}
+
 // SetProposalToken sets the current proposal token string whose data is being
 // unmarshalled.
 func SetProposalToken(token string) {
 	proposalToken = token
+}
+
+// ClearProposalToken deletes the outdated proposal token value.
+func ClearProposalToken() {
+	proposalToken = ""
 }
 
 // SetJournalActionFormat sets journal (struct with the version and the journal
@@ -100,10 +105,19 @@ func SetJournalActionFormat(val string) {
 	journalActionFormat = val
 }
 
-// UnmarshalJSON defines the default unmarshaller for Votes.
+// UnmarshalJSON defines the default unmarshaller for Votes. The votes unmarshalling
+// happens for all token in the current commit data unless specific proposalToken
+// is set.
 func (v *Votes) UnmarshalJSON(b []byte) error {
 	str := string(b)
-	isMatched, err := regexp.MatchString(proposalToken, str)
+	if proposalToken == "" {
+		isMatched, err := regexp.MatchString(proposalToken, str)
+		if !isMatched || err != nil {
+			return err
+		}
+	}
+
+	isMatched, err := regexp.MatchString("castvote", str)
 	if !isMatched || err != nil {
 		return err
 	}
@@ -121,6 +135,13 @@ func (v *Votes) UnmarshalJSON(b []byte) error {
 	// Replace '} +{"version":"\d","action":"add|del"}' with '},'.
 	str = replaceUnwanted(str, fmt.Sprintf(`(}[\s+]*%s)`, journalActionFormat), "},")
 
+	// Replace '[ +{"version":"\d","action":"add|del"}' with '['.
+	str = replaceUnwanted(str, fmt.Sprintf(`([[][\s+]*%s)`, journalActionFormat), "[")
+
+	// Replace '+\s' with ''.
+	str = replaceUnwanted(str, `([\s+]*)`, "")
+
+	// create a custom unmarshalling type to avoid being trapped in endless loop.
 	type votes2 Votes
 	var v2 votes2
 
@@ -136,11 +157,21 @@ func (v *Votes) UnmarshalJSON(b []byte) error {
 
 // UnmarshalJSON is the default unmarshaller for HistorySHA.
 func (h *HistorySHAs) UnmarshalJSON(b []byte) error {
-	isMatched, err := regexp.MatchString(defaultVotesCommitMsg, string(b))
+	// Match the defaultVotesCommitMsg string
+	isMatched, err := isMatching(string(b), defaultVotesCommitMsg)
 	if !isMatched || err != nil {
 		return err
 	}
 
+	// Match the proposalToken string
+	if proposalToken != "" {
+		isMatched, err = isMatching(string(b), proposalToken)
+		if !isMatched || err != nil {
+			return err
+		}
+	}
+
+	// Create a custom unmarshalling type to avoid being trapped in endless loop.
 	type history HistorySHAs
 	var h2 history
 
@@ -156,4 +187,13 @@ func (h *HistorySHAs) UnmarshalJSON(b []byte) error {
 // replaceUnwanted replaces 'x' regex expression matchings in string 'str' with 'with'.
 func replaceUnwanted(str, x, with string) string {
 	return regexp.MustCompile(x).ReplaceAllLiteralString(str, with)
+}
+
+// isMatching returns true if the matchRegex can be matched in the string str.
+func isMatching(str, matchRegex string) (bool, error) {
+	isMatched, err := regexp.MatchString(matchRegex, str)
+	if !isMatched || err != nil {
+		return false, err
+	}
+	return true, nil
 }
