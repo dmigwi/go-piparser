@@ -24,6 +24,11 @@ const (
 	rawSHAListURL = "https://api.github.com/repos/%s/%s/commits?path=%s/%s/plugins/decred/ballot.journal&page=%d&per_page=%d"
 )
 
+// This a github Oauth token that is required to avoid the 60req/hour for the
+// core github API. With Oauth token set, authenticated requests are made which
+// do get very high to no rate limit set at all.
+var accessToken string
+
 // NewHTTPClient returns an initialized http client whose timeout has been
 // capped at 10 seconds.
 func NewHTTPClient() *http.Client {
@@ -39,13 +44,22 @@ func NewHTTPClient() *http.Client {
 	}
 }
 
+// SetAccessToken sets the github access token.
+func SetAccessToken(token string) error {
+	if accessToken == "" {
+		return fmt.Errorf("empty github access token found (https://developer.github.com/v3/#rate-limiting)")
+	}
+	accessToken = token
+	return nil
+}
+
 // GetRequestHandler accepts a http client, github access token and a URL path
 // needed to make a http GET request. It makes the request and returns a
 // byte slice read from the body. A github access token is required to avoid the
 // app from being rate limited by github API endpoints. For unauthenticated requests
 // a limit of 60 requests per hour is set but for authenticated requests more than
 // 5000 requests can be made per hour. https://developer.github.com/v3/#rate-limiting
-func GetRequestHandler(client *http.Client, accessToken, URLPath string) ([]byte, error) {
+func GetRequestHandler(client *http.Client, URLPath string) ([]byte, error) {
 	if URLPath == "" {
 		return nil, fmt.Errorf("empty URL path found")
 	}
@@ -60,11 +74,7 @@ func GetRequestHandler(client *http.Client, accessToken, URLPath string) ([]byte
 	// The app could work without the access token but 60req/hr is not enough to
 	// enable the app make any meaningful number of queries before the rate
 	// limit is hit.
-	if accessToken != "" {
-		req.Header.Set("Authorization", "token "+accessToken)
-	} else {
-		return nil, fmt.Errorf("empty github access token found (https://developer.github.com/v3/#rate-limiting)")
-	}
+	req.Header.Set("Authorization", "token "+accessToken)
 
 	// Make the actual GET request.
 	resp, err := client.Do(req)

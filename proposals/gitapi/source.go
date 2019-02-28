@@ -54,15 +54,15 @@ func NewParser(repoOwner, repoName string, newInstance ...*http.Client) *Parser 
 // SetProposalToken set the specific proposal token whose vote details only should
 // be unmarshalled from the current list of commits.
 func (p *Parser) SetProposalToken(token string) error {
-	if token == "" {
-		return fmt.Errorf("empty token hash string found")
-	}
-	types.SetProposalToken(token)
-	return nil
+	return types.SetProposalToken(token)
+}
+
+func (p *Parser) SetAccessToken(token string) error {
+	return piclient.SetAccessToken(token)
 }
 
 // Proposal returns the commit history data associated with the provided token.
-func (p *Parser) Proposal(proposalToken, accessToken string) (items []*types.History, err error) {
+func (p *Parser) Proposal(proposalToken string) (items []*types.History, err error) {
 	defer types.ClearProposalToken()
 
 	var page int
@@ -70,7 +70,7 @@ func (p *Parser) Proposal(proposalToken, accessToken string) (items []*types.His
 
 	items = make([]*types.History, 0)
 
-	votesDir, err := p.retrieveVotesDirName(proposalToken, accessToken)
+	votesDir, err := p.retrieveVotesDirName(proposalToken)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func (p *Parser) Proposal(proposalToken, accessToken string) (items []*types.His
 		page++
 		log.Printf("Handling batch %d of max %d commits...", page, defaultPageSize)
 
-		data, err = p.proposal(proposalToken, votesDir, accessToken, page, defaultPageSize)
+		data, err = p.proposal(proposalToken, votesDir, page, defaultPageSize)
 		if err != nil {
 			return
 		}
@@ -94,8 +94,8 @@ func (p *Parser) Proposal(proposalToken, accessToken string) (items []*types.His
 
 // proposal returns a proposal whose commit history count and page is defined by
 // the pageSize and the page values respectively.
-func (p *Parser) proposal(token, piVotesDirName, accessToken string, page, pageSize int) ([]*types.History, error) {
-	commitsSHA, err := p.retrieveSHAList(token, piVotesDirName, accessToken, page, pageSize)
+func (p *Parser) proposal(token, piVotesDirName string, page, pageSize int) ([]*types.History, error) {
+	commitsSHA, err := p.retrieveSHAList(token, piVotesDirName, page, pageSize)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +106,7 @@ func (p *Parser) proposal(token, piVotesDirName, accessToken string, page, pageS
 			continue
 		}
 
-		elem, err := p.retrieveCommit(hash.SHA, accessToken)
+		elem, err := p.retrieveCommit(hash.SHA)
 		if err != nil {
 			return nil, err
 		}
@@ -124,7 +124,7 @@ func (p *Parser) proposal(token, piVotesDirName, accessToken string, page, pageS
 
 // retrieveSHAList returns a list of commit SHA with the provided token string
 // as a file path.
-func (p *Parser) retrieveSHAList(token, piVotesDirName, accessToken string,
+func (p *Parser) retrieveSHAList(token, piVotesDirName string,
 	page, pageSize int) (*types.HistorySHAs, error) {
 	// Constructs the full commit SHA list url.
 	URLPath, err := piclient.SHAListURL(token, p.repoOwner, p.repoName, piVotesDirName, page, pageSize)
@@ -133,7 +133,7 @@ func (p *Parser) retrieveSHAList(token, piVotesDirName, accessToken string,
 	}
 
 	// Makes a GET request to the commit SHA list url created.
-	list, err := piclient.GetRequestHandler(p.client, accessToken, URLPath)
+	list, err := piclient.GetRequestHandler(p.client, URLPath)
 	if err != nil {
 		return nil, fmt.Errorf("piclient.GetRequestHandler failed: %v", err)
 	}
@@ -150,7 +150,7 @@ func (p *Parser) retrieveSHAList(token, piVotesDirName, accessToken string,
 
 // retrieveCommit returns the unmarshalled commit data identified by the provided
 // commit SHA if it exists.
-func (p *Parser) retrieveCommit(commitSHA, accessToken string) (*types.History, error) {
+func (p *Parser) retrieveCommit(commitSHA string) (*types.History, error) {
 	// Constructs full commit content url path.
 	URLPath, err := piclient.CommitURL(commitSHA, p.repoOwner, p.repoName)
 	if err != nil {
@@ -158,7 +158,7 @@ func (p *Parser) retrieveCommit(commitSHA, accessToken string) (*types.History, 
 	}
 
 	// Fetch the commit content GET url path request.
-	content, err := piclient.GetRequestHandler(p.client, accessToken, URLPath)
+	content, err := piclient.GetRequestHandler(p.client, URLPath)
 	if err != nil {
 		return nil, fmt.Errorf("piclient.GetRequestHandler failed: %v", err)
 	}
@@ -175,7 +175,7 @@ func (p *Parser) retrieveCommit(commitSHA, accessToken string) (*types.History, 
 
 // retrieveVotesDirName returns the folder name that contain ballot.journal file
 // in the git repo.
-func (p *Parser) retrieveVotesDirName(token, accessToken string) (string, error) {
+func (p *Parser) retrieveVotesDirName(token string) (string, error) {
 	// Construct the full proposal token string directories content url.
 	URLPath, err := piclient.ContentsURL(token, p.repoOwner, p.repoName)
 	if err != nil {
@@ -183,7 +183,7 @@ func (p *Parser) retrieveVotesDirName(token, accessToken string) (string, error)
 	}
 
 	// Fetch the list of directories in the proposal token string directory.
-	data, err := piclient.GetRequestHandler(p.client, accessToken, URLPath)
+	data, err := piclient.GetRequestHandler(p.client, URLPath)
 	if err != nil {
 		return "", err
 	}

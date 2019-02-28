@@ -28,9 +28,8 @@ func TestMain(m *testing.M) {
 // It also tests the actual API request call.
 func TestGetRequestHandler(t *testing.T) {
 	type testData struct {
-		client      *http.Client
-		AccessToken string
-		URLPath     string
+		client  *http.Client
+		URLPath string
 
 		Results []byte
 		errMsg  string
@@ -40,15 +39,13 @@ func TestGetRequestHandler(t *testing.T) {
 	testURL := testServer.URL
 
 	td := []testData{
-		{client, "", "", []byte{}, "empty URL path found"},
-		{client, "testAccessToken", "", []byte(""), "empty URL path found"},
-		{client, "", testURL, []byte(""), "empty github access token found (https://developer.github.com/v3/#rate-limiting)"},
-		{client, "testAccessToken", testURL, []byte("OK"), ""},
+		{client, "", []byte(""), "empty URL path found"},
+		{client, testURL, []byte("OK"), ""},
 	}
 
 	for i, val := range td {
 		t.Run("Test_#"+strconv.Itoa(i), func(t *testing.T) {
-			resp, err := GetRequestHandler(val.client, val.AccessToken, val.URLPath)
+			resp, err := GetRequestHandler(val.client, val.URLPath)
 			if err != nil && err.Error() != val.errMsg {
 				t.Fatalf("expected to find error '%s' but found '%v", val.errMsg, err)
 			}

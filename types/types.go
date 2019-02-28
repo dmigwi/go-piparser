@@ -90,8 +90,13 @@ type GitPropDirectories struct {
 
 // SetProposalToken sets the current proposal token string whose data is being
 // unmarshalled.
-func SetProposalToken(token string) {
+func SetProposalToken(token string) error {
+	if token == "" {
+		return fmt.Errorf("empty token hash string found")
+	}
+
 	proposalToken = token
+	return nil
 }
 
 // ClearProposalToken deletes the outdated proposal token value.
