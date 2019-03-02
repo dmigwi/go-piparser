@@ -104,9 +104,9 @@ func CommitURL(baseURL, commitSHA, repoOwner, repoName string) string {
 	var path string
 	if commitSHA == "" {
 		path = fmt.Sprintf(rawCommitsURL, repoOwner, repoName)
+	} else {
+		path = fmt.Sprintf(rawCommitURL, repoOwner, repoName, commitSHA)
 	}
-
-	path = fmt.Sprintf(rawCommitURL, repoOwner, repoName, commitSHA)
 
 	return baseURL + path
 }

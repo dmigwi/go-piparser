@@ -7,10 +7,18 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+
+	"github.com/decred/politeia/politeiad/backend/gitbe"
 )
 
 const (
+	// defaultVotesCommitMsg defines the message of the commits that holds
+	// the votes data for various proposal token(s).
 	defaultVotesCommitMsg = "Flush vote journals"
+
+	// cmdDateFormat defines the date format returned by github via git cmd data
+	// source.
+	cmdDateFormat = "Mon Jan 2 15:04:05 2006 -0700"
 )
 
 var journalActionFormat, proposalToken string
@@ -106,8 +114,16 @@ func ClearProposalToken() {
 
 // SetJournalActionFormat sets journal (struct with the version and the journal
 // action) format to use for the regexp.
-func SetJournalActionFormat(val string) {
-	journalActionFormat = val
+func SetJournalActionFormat() {
+	f, err := json.Marshal(gitbe.JournalAction{
+		Version: `[[:digit:]]*`,
+		Action:  "(add)?(del)?(addlike)?",
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	journalActionFormat = string(f)
 }
 
 // UnmarshalJSON defines the default unmarshaller for Votes. The votes unmarshalling

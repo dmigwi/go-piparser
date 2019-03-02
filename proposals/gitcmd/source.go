@@ -1,1 +1,4 @@
 package gitcmd
+
+func NewParser() {
+}
