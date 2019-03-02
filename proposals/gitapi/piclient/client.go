@@ -1,3 +1,6 @@
+// Copyright 2019 Migwi Ndung'u.
+// License that can be found in the LICENSE file.
+
 // Package piclient manages how http API endpoints are queried using a http client.
 package piclient
 

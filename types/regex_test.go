@@ -253,7 +253,7 @@ func TestRetrieveAllPatchSelection(t *testing.T) {
 	td := []testData{
 		{
 			src:    `{"version":"1","action":"add"}{"castvote":{"token":"27f87171d98b7923a1bd2bee6affed929fa2d2a6e178b5c80a9971a92a5c7f50"}`,
-			output: "", // match found
+			output: "", // match not found
 		},
 		{
 			src:    `+{"version":"1","action":"add"}{"castvote":{"token":"27f87171d98b7923a1bd2bee6affed929fa2d2a6e178b5c80a9971a92a5c7f50"}`,
@@ -284,6 +284,35 @@ func TestRetrieveAllPatchSelection(t *testing.T) {
 			if val.output != result {
 				t.Fatalf("expected the returned string to be equal to '%s' but was '%s'",
 					val.output, result)
+			}
+		})
+	}
+}
+
+func TestIsMatching(t *testing.T) {
+	type testData struct {
+		src, regex string
+		isFound    bool
+	}
+
+	td := []testData{
+		{src: `
+		`, regex: "\n", isFound: true}, // matching newline character.
+		{src: `
+		`, regex: "\\n", isFound: true}, //matching escaped newline character.
+		{src: `\n`, regex: "\\n", isFound: false},
+		{src: `    Flush vote journals.
+		`, regex: defaultVotesCommitMsg, isFound: true},
+		{src: "b/27f87171d98b7923a1bd2bee6af/3/plugins/decred/ballot.journal",
+			regex: "27f87171d98b7923a1bd2bee6af", isFound: true},
+	}
+
+	for i, val := range td {
+		t.Run("Test_#"+strconv.Itoa(i), func(t *testing.T) {
+			result := IsMatching(val.src, val.regex)
+			if result != val.isFound {
+				t.Fatalf("expected the matching src to the regex to be %v but found %v",
+					val.isFound, result)
 			}
 		})
 	}

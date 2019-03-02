@@ -1,3 +1,6 @@
+// Copyright 2019 Migwi Ndung'u.
+// License that can be found in the LICENSE file.
+
 package types
 
 import (
@@ -6,6 +9,10 @@ import (
 	"strings"
 	"time"
 )
+
+// All regular expression used in this package are documented and implemented
+// here. More on the regular expressions syntax used can be found here,
+// https://github.com/google/re2/wiki/Syntax.
 
 // PiRegExp helps defines the various regex expression supported.
 type PiRegExp string
@@ -49,7 +56,7 @@ func (e PiRegExp) exp() *regexp.Regexp {
 // the line ending characters(line-feed, form-feed and carriage return characters)
 // in the provided parent string.
 func ReplaceLineEndingChars(parent, with string) string {
-	return lineEndingSelection.exp().ReplaceAllString(parent, with)
+	return lineEndingSelection.exp().ReplaceAllLiteralString(parent, with)
 }
 
 // RetrieveCMDAuthor uses cmdAuthorSelection regex expression to retrieve the
@@ -86,7 +93,7 @@ func RetrieveCMDCommit(parent string) (string, error) {
 // ReplaceJournalSelection uses journalSelection regex expression to replace the
 // journal action in the provided parent string using the provided replacement.
 func ReplaceJournalSelection(parent, with string) string {
-	return journalSelection().exp().ReplaceAllString(parent, with)
+	return journalSelection().exp().ReplaceAllLiteralString(parent, with)
 }
 
 // RetrieveAllPatchSelection uses patchSelection regex expression to fetch all
@@ -95,4 +102,14 @@ func ReplaceJournalSelection(parent, with string) string {
 func RetrieveAllPatchSelection(parent string) string {
 	matches := patchSelection().exp().FindAllString(parent, -1)
 	return strings.Join(matches, ",")
+}
+
+// IsMatching returns boolean true if the matchRegex can be matched in the parent
+// string.
+func IsMatching(parent, matchRegex string) bool {
+	isMatched, err := regexp.MatchString(matchRegex, parent)
+	if !isMatched || err != nil {
+		return false
+	}
+	return true
 }

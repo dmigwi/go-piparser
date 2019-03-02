@@ -1,3 +1,6 @@
+// Copyright 2019 Migwi Ndung'u.
+// License that can be found in the LICENSE file.
+
 // Package types defines the data types needed to serialize and unserialize the
 // the data sent or recieved.
 package types
@@ -179,16 +182,14 @@ func (v *Votes) UnmarshalJSON(b []byte) error {
 // UnmarshalJSON is the default unmarshaller for HistorySHA.
 func (h *HistorySHAs) UnmarshalJSON(b []byte) error {
 	// Match the defaultVotesCommitMsg string
-	isMatched, err := isMatching(string(b), defaultVotesCommitMsg)
-	if !isMatched || err != nil {
-		return err
+	if isMatched := IsMatching(string(b), defaultVotesCommitMsg); !isMatched {
+		return nil
 	}
 
 	// Match the proposalToken string
 	if proposalToken != "" {
-		isMatched, err = isMatching(string(b), proposalToken)
-		if !isMatched || err != nil {
-			return err
+		if isMatched := IsMatching(string(b), proposalToken); !isMatched {
+			return fmt.Errorf("missing proposal token %s", proposalToken)
 		}
 	}
 
@@ -196,8 +197,7 @@ func (h *HistorySHAs) UnmarshalJSON(b []byte) error {
 	type history HistorySHAs
 	var h2 history
 
-	err = json.Unmarshal(b, &h2)
-	if err != nil {
+	if err := json.Unmarshal(b, &h2); err != nil {
 		return err
 	}
 
@@ -208,13 +208,4 @@ func (h *HistorySHAs) UnmarshalJSON(b []byte) error {
 // replaceUnwanted replaces 'x' regex expression matchings in string 'str' with 'with'.
 func replaceUnwanted(str, x, with string) string {
 	return regexp.MustCompile(x).ReplaceAllLiteralString(str, with)
-}
-
-// isMatching returns true if the matchRegex can be matched in the string str.
-func isMatching(str, matchRegex string) (bool, error) {
-	isMatched, err := regexp.MatchString(matchRegex, str)
-	if !isMatched || err != nil {
-		return false, err
-	}
-	return true, nil
 }
