@@ -18,7 +18,7 @@ func TestNewAPIExplorer(t *testing.T) {
 		rName           = "samaki"
 		rOwner          = "dmigwi"
 		testAccessToken = "sample"
-		defaultErrorMsg = "empty token hash string found"
+		defaultErrorMsg = "empty github access token found (https://developer.github.com/v3/#rate-limiting)"
 	)
 
 	td := []testData{
