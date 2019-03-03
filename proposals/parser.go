@@ -22,6 +22,10 @@ type ExplorerDataSource interface {
 
 func NewAPIExplorer(accessToken, repoOwner, repoName string,
 	newInstance ...*http.Client) (ExplorerDataSource, error) {
+
+	// Set defaults if empty values were passed
+	ValidateRepoProperties(&repoOwner, &repoName)
+
 	var parser *gitapi.Parser
 	if len(newInstance) == 0 {
 		parser = gitapi.NewParser(repoOwner, repoName)
@@ -39,4 +43,16 @@ func NewAPIExplorer(accessToken, repoOwner, repoName string,
 
 func NewCMDExplorer() {
 
+}
+
+// validateRepoProperties sets the default repo name and repo user if empty
+// value were passed.
+func ValidateRepoProperties(repoOwner, repoName *string) {
+	if *repoName == "" {
+		*repoName = types.DefaultRepo
+	}
+
+	if *repoOwner == "" {
+		*repoOwner = types.DefaultRepoOwner
+	}
 }

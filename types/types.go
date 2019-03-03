@@ -15,6 +15,14 @@ import (
 )
 
 const (
+	// DefaultRepo is the default github repository name where Politea Votes
+	// are stored.
+	DefaultRepo = "mainnet"
+
+	// DefaultRepoOwner is the owner of the default github repository where
+	// Politeia votes are stored.
+	DefaultRepoOwner = "decred-proposals"
+
 	// defaultVotesCommitMsg defines the message of the commits that holds
 	// the votes data for various proposal token(s).
 	defaultVotesCommitMsg = "Flush vote journals"
@@ -102,7 +110,7 @@ type GitPropDirectories struct {
 // SetProposalToken sets the current proposal token string whose data is being
 // unmarshalled.
 func SetProposalToken(token string) error {
-	if token == "" {
+	if len(token) == 0 {
 		return fmt.Errorf("empty token hash string found")
 	}
 

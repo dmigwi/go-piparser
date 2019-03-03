@@ -167,14 +167,17 @@ func TestRetrieveCMDDate(t *testing.T) {
 func TestRetrieveCMDCommit(t *testing.T) {
 	td := []testData{
 		{
-			src:     "Politeia is the Decred proposal system. ",
+			src:     "commit:",
 			output:  "",
 			isError: true,
 		},
 		{
-			src:     "commit:",
-			output:  "",
-			isError: true,
+			src:    " 855cad7c76087645a8f3c3525bb79513e35fe4ac",
+			output: "855cad7c76087645a8f3c3525bb79513e35fe4ac",
+		},
+		{
+			src:    "855cad7c76087645a8f3c3525bb79513e35fe4ac",
+			output: "855cad7c76087645a8f3c3525bb79513e35fe4ac",
 		},
 		{
 			src: `commit: 855cad7c76087645a8f3c3525bb79513e35fe4ac

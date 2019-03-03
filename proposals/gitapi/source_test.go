@@ -1,6 +1,3 @@
-// Copyright 2019 Migwi Ndung'u.
-// License that can be found in the LICENSE file.
-
 package gitapi
 
 import (
@@ -75,18 +72,22 @@ func TestNewParser(t *testing.T) {
 		t.Run("Test_#"+strconv.Itoa(i), func(t *testing.T) {
 			testParser := NewParser(val.repoOwner, val.repoName, val.testClient)
 
-			if val.repoName == "" {
-				expectedRName = defaultRepo
-			}
-			if testParser.repoName != expectedRName {
-				t.Fatalf("expected the repo name to be %s but found %s", expectedRName, testParser.repoName)
+			// repoName is preset and validation done before gitapi.NewParser
+			// is invoked.
+			if val.repoName != "" {
+				if testParser.repoName != expectedRName {
+					t.Fatalf("expected the repo name to be %s but found %s",
+						expectedRName, testParser.repoName)
+				}
 			}
 
-			if val.repoOwner == "" {
-				expectedROwner = defaultRepoOwner
-			}
-			if testParser.repoOwner != expectedROwner {
-				t.Fatalf("expected the repo owner to be %s but found %s ", expectedROwner, testParser.repoOwner)
+			// repoOwner is preset and validation done before gitapi.NewParser
+			// is invoked.
+			if val.repoOwner != "" {
+				if testParser.repoOwner != expectedROwner {
+					t.Fatalf("expected the repo owner to be %s but found %s ",
+						expectedROwner, testParser.repoOwner)
+				}
 			}
 
 			if testParser.client == nil {

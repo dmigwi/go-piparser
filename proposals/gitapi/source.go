@@ -18,9 +18,7 @@ import (
 var pageSize = 20
 
 const (
-	defaultRepo      = "mainnet"
-	defaultRepoOwner = "decred-proposals"
-	defaultAPIURL    = "https://api.github.com"
+	defaultAPIURL = "https://api.github.com"
 
 	// Sets that a maximum of 200 records per page can be fetched for processing
 	// from the github API endpoints in a single API call.
@@ -41,15 +39,11 @@ type Parser struct {
 // was provided or a nil client was passed. If the repoName and repoOwner provided
 // are empty the defaults are set.
 func NewParser(repoOwner, repoName string, newInstance ...*http.Client) *Parser {
-	if repoName == "" {
-		repoName = defaultRepo
+	p := &Parser{
+		repoName:   repoName,
+		repoOwner:  repoOwner,
+		baseAPIURL: defaultAPIURL,
 	}
-
-	if repoOwner == "" {
-		repoOwner = defaultRepoOwner
-	}
-
-	p := &Parser{repoName: repoName, repoOwner: repoOwner, baseAPIURL: defaultAPIURL}
 
 	if len(newInstance) > 0 && newInstance[0] != nil {
 		// Assign custom http client.

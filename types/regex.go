@@ -27,9 +27,11 @@ var (
 	// with line ending character(s) or its the actual end of the line.
 	cmdAuthorSelection PiRegExp = `Author[:\s]*(.*)`
 
-	// cmdCommitSelection matches a text line that starts with 'commit' and ends
-	// with line ending character(s) or its the actual end of the line.
-	cmdCommitSelection PiRegExp = `commit[:\s]*(.*)`
+	// cmdCommitSelection matches a text line that starts with 'commit' or a
+	// white space character and ends with line ending character(s) or its the
+	// actual end of the line. The commit SHA part will always be the start of the
+	// commit message after the whole git cmd history is split into individual messages.
+	cmdCommitSelection PiRegExp = `[(^ )commit]*[:\s]*(.*)`
 
 	// cmdDateSelection matches a text line that starts with 'Date' and ends with
 	// line ending character(s) or its the actual end of the line.
