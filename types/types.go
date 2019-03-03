@@ -1,3 +1,6 @@
+// Copyright 2019 Migwi Ndung'u.
+// License that can be found in the LICENSE file.
+
 // Package types defines the data types needed to serialize and unserialize the
 // the data sent or recieved.
 package types
@@ -7,10 +10,26 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+
+	"github.com/decred/politeia/politeiad/backend/gitbe"
 )
 
 const (
+	// DefaultRepo is the default github repository name where Politea Votes
+	// are stored.
+	DefaultRepo = "mainnet"
+
+	// DefaultRepoOwner is the owner of the default github repository where
+	// Politeia votes are stored.
+	DefaultRepoOwner = "decred-proposals"
+
+	// defaultVotesCommitMsg defines the message of the commits that holds
+	// the votes data for various proposal token(s).
 	defaultVotesCommitMsg = "Flush vote journals"
+
+	// cmdDateFormat defines the date format returned by github via git cmd data
+	// source.
+	cmdDateFormat = "Mon Jan 2 15:04:05 2006 -0700"
 )
 
 var journalActionFormat, proposalToken string
@@ -90,8 +109,13 @@ type GitPropDirectories struct {
 
 // SetProposalToken sets the current proposal token string whose data is being
 // unmarshalled.
-func SetProposalToken(token string) {
+func SetProposalToken(token string) error {
+	if len(token) == 0 {
+		return fmt.Errorf("empty token hash string found")
+	}
+
 	proposalToken = token
+	return nil
 }
 
 // ClearProposalToken deletes the outdated proposal token value.
@@ -101,8 +125,16 @@ func ClearProposalToken() {
 
 // SetJournalActionFormat sets journal (struct with the version and the journal
 // action) format to use for the regexp.
-func SetJournalActionFormat(val string) {
-	journalActionFormat = val
+func SetJournalActionFormat() {
+	f, err := json.Marshal(gitbe.JournalAction{
+		Version: `[[:digit:]]*`,
+		Action:  "(add)?(del)?(addlike)?",
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	journalActionFormat = string(f)
 }
 
 // UnmarshalJSON defines the default unmarshaller for Votes. The votes unmarshalling
@@ -158,16 +190,14 @@ func (v *Votes) UnmarshalJSON(b []byte) error {
 // UnmarshalJSON is the default unmarshaller for HistorySHA.
 func (h *HistorySHAs) UnmarshalJSON(b []byte) error {
 	// Match the defaultVotesCommitMsg string
-	isMatched, err := isMatching(string(b), defaultVotesCommitMsg)
-	if !isMatched || err != nil {
-		return err
+	if isMatched := IsMatching(string(b), defaultVotesCommitMsg); !isMatched {
+		return nil
 	}
 
 	// Match the proposalToken string
 	if proposalToken != "" {
-		isMatched, err = isMatching(string(b), proposalToken)
-		if !isMatched || err != nil {
-			return err
+		if isMatched := IsMatching(string(b), proposalToken); !isMatched {
+			return fmt.Errorf("missing proposal token %s", proposalToken)
 		}
 	}
 
@@ -175,8 +205,7 @@ func (h *HistorySHAs) UnmarshalJSON(b []byte) error {
 	type history HistorySHAs
 	var h2 history
 
-	err = json.Unmarshal(b, &h2)
-	if err != nil {
+	if err := json.Unmarshal(b, &h2); err != nil {
 		return err
 	}
 
@@ -187,13 +216,4 @@ func (h *HistorySHAs) UnmarshalJSON(b []byte) error {
 // replaceUnwanted replaces 'x' regex expression matchings in string 'str' with 'with'.
 func replaceUnwanted(str, x, with string) string {
 	return regexp.MustCompile(x).ReplaceAllLiteralString(str, with)
-}
-
-// isMatching returns true if the matchRegex can be matched in the string str.
-func isMatching(str, matchRegex string) (bool, error) {
-	isMatched, err := regexp.MatchString(matchRegex, str)
-	if !isMatched || err != nil {
-		return false, err
-	}
-	return true, nil
 }
