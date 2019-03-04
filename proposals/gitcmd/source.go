@@ -1,11 +1,13 @@
 // Copyright 2019 Migwi Ndung'u.
 // License that can be found in the LICENSE file.
 
+// Package gitcmd holds the various methods and functions that facilitate access
+// to Politeia votes data that are cloned from github and accessed using the git
+// commandline interface.
 package gitcmd
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -18,21 +20,46 @@ import (
 )
 
 const (
-	cmdTimeout     = 5 * time.Second
-	gitCmd         = "git"
+	// cmdTimeout defines the length in time, where the outcome of a command is
+	// expected to be returned before the current context times out.
+	cmdTimeout = 5 * time.Second
+
+	// gitCmd is the prefix of all command issued to the git commandline interface.
+	gitCmd = "git"
+
+	// listCommitsArg defines the git commandline argument that lists the repo
+	// commit history in a chronoligical order. The oldest commit is listed as
+	// the last one.
 	listCommitsArg = "log"
+
+	// commitPatchArg is an optional argument added to show the commit history
+	// with the patch(changes made) field.
 	commitPatchArg = "-p"
-	cloneArg       = "clone"
-	remoteAddArg   = "remote add"
-	versionArg     = "--version"
+
+	// cloneArg is the argument added between the git prefix command and the
+	// repository download URL.
+	cloneArg = "clone"
+
+	// remoteAddArg is a combination of two arguments that are used to set a
+	// reference to the remote repository.
+	remoteAddArg = "remote add"
+
+	// versionArg list the version of the active git install. Its primarily used
+	// to check if git is installed.
+	versionArg = "--version"
+
+	// pullChangesArg is an argument that helps pull latest changes from the
+	// remote repository set.
 	pullChangesArg = "pull"
-	remoteURLRef   = "origin"
+
+	// remoteURLRef references the remote URL used to clone the repository.
+	remoteURLRef = "origin"
 
 	// remoteURL set uses https protocol instead of git or ssh protocol. git
-	// protocol may be a bit faster but it requires a dedicated port 9418 to be
+	// protocol may be faster but it requires a dedicated port (9418) to be
 	// open always. ssh requires authentication which is clearly not necessary
 	// in this case scenario. Find more on the access protcols here:
-	// https://git-scm.com/book/en/v3/Git-on-the-Server-The-Protocols
+	// https://git-scm.com/book/en/v2/Git-on-the-Server-The-Protocols
 	remoteURL = "https://github.com/%s/%s.git"
 )
 
@@ -44,14 +71,16 @@ type CMDParser struct {
 }
 
 func NewParser(repo, repoOwner, rootCloneDir string) (*CMDParser, error) {
-	// if no directory was provided create a temporary folder.
+	// If no directory was provided or the provided directory does not exist
+	// create a temporary folder.
 	var err error
-	if rootCloneDir == "" {
+	if _, err = os.Stat(rootCloneDir); os.IsNotExist(err) {
 		rootCloneDir, err = ioutil.TempDir("temp", "go-piparser")
 		if err != nil || rootCloneDir == "" {
 			return nil, fmt.Errorf("failed to create a temp cloning dir: %v", err)
 		}
 	}
+
 	p := &CMDParser{
 		repoName:  repo,
 		repoOwner: repoOwner,
@@ -73,24 +102,28 @@ func (p *CMDParser) Proposal(proposalToken string) (items []*types.History, err 
 	// https://docs.decred.org/advanced/navigating-politeia-data/#voting-and-comment-data
 	if time.Since(p.lastUpdate) > 1*time.Hour {
 		if err := p.updateEnv(); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("updateEnv failed: %v", err)
 		}
 	}
 
 	data, err := p.proposal(proposalToken)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("fetching proposal failed: %v", err)
 	}
 
 	for _, entry := range data {
-		var v types.History
-
-		err = json.Unmarshal([]byte(entry), &v)
-		if err != nil {
-			return nil, err
+		if len(entry) == 0 {
+			continue
 		}
 
-		items = append(items, &v)
+		v2 := &copyHistory{}
+		err = v2.customUnmashaller(entry)
+		if err != nil {
+			return nil, fmt.Errorf("copyHistory.customUnmashaller failed: %v", err)
+		}
+
+		h := types.History(*v2)
+		items = append(items, &h)
 	}
 
 	return
@@ -119,18 +152,12 @@ func (p *CMDParser) updateEnv() error {
 			gitCmd, versionArg, err)
 	}
 
+	// full clone directory: includes the expected cloned repository.
 	workingDir := filepath.Join(p.cloneDir, p.repoName)
-
 	_, err = os.Stat(workingDir)
-	isFound := os.IsNotExist(err)
-	// If the error found does indicate that the folder path could not be found
-	// exit the environment setup process.
-	if err != nil && isFound {
-		return err
-	}
 
-	switch isFound {
-	case true:
+	switch {
+	case !os.IsNotExist(err):
 		// The working directory was found thus initiate the updates fetch process.
 		if err := p.execCommand(gitCmd, pullChangesArg, remoteURLRef); err == nil {
 			p.lastUpdate = time.Now()
@@ -160,10 +187,11 @@ func (p *CMDParser) updateEnv() error {
 
 		// Set the remote url to enable pulling changes added in the future
 		if err := p.execCommand(gitCmd, remoteAddArg, remoteURLRef, completeRemoteURL); err != nil {
-			return fmt.Errorf("failed to set %s as remote url ref to %s",
-				remoteURLRef, completeRemoteURL)
+			return fmt.Errorf("failed to set %s as remote url ref to %s: %v",
+				remoteURLRef, completeRemoteURL, err)
 		}
 	}
+
 	p.lastUpdate = time.Now()
 	return nil
 }
@@ -204,8 +232,18 @@ func (p *CMDParser) processCommand(cmdName string, args ...string) (*exec.Cmd,
 	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 	cmd := exec.CommandContext(ctx, cmdName, args...)
 
-	// set the working directory. Working directory == cloneDir + repoName
-	cmd.Dir = filepath.Join(p.cloneDir, p.repoName)
+	// set the working directory.
+	cmd.Dir = p.workingDir()
 
 	return cmd, cancel, nil
+}
+
+// workingDir return (cloneDir + repoName) directory path if the target repo
+// exists otherwise returns cloneDir as the working directory.
+func (p *CMDParser) workingDir() string {
+	dir := filepath.Join(p.cloneDir, p.repoName)
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		dir = p.cloneDir
+	}
+	return dir
 }

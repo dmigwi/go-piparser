@@ -298,6 +298,9 @@ func TestIsMatching(t *testing.T) {
 		isFound    bool
 	}
 
+	// set current proposal token to 27f87171d98b7923a1bd2bee6affed929fa2d2a6e178b5c80a9971a92a5c7f50
+	SetProposalToken("27f87171d98b7923a1bd2bee6affed929fa2d2a6e178b5c80a9971a92a5c7f50")
+
 	td := []testData{
 		{src: `
 		`, regex: "\n", isFound: true}, // matching newline character.
@@ -305,9 +308,11 @@ func TestIsMatching(t *testing.T) {
 		`, regex: "\\n", isFound: true}, //matching escaped newline character.
 		{src: `\n`, regex: "\\n", isFound: false},
 		{src: `    Flush vote journals.
-		`, regex: defaultVotesCommitMsg, isFound: true},
+		`, regex: DefaultVotesCommitMsg, isFound: true},
 		{src: "b/27f87171d98b7923a1bd2bee6af/3/plugins/decred/ballot.journal",
 			regex: "27f87171d98b7923a1bd2bee6af", isFound: true},
+		{src: `{"version":"1","action":"add"}{"castvote":{"token":"27f87171d98b7923a1bd2bee6affed929fa2d2a6e178b5c80a9971a92a5c7f50",.
+		`, regex: VotesJSONSignature(), isFound: true}, // Match the VotesJSONSignature() regex
 	}
 
 	for i, val := range td {
@@ -316,6 +321,41 @@ func TestIsMatching(t *testing.T) {
 			if result != val.isFound {
 				t.Fatalf("expected the matching src to the regex to be %v but found %v",
 					val.isFound, result)
+			}
+		})
+	}
+}
+
+func TestReplaceAddnDelMetrics(t *testing.T) {
+	td := []testData{
+		{
+			src:    `@@ -13120,3 +13120,22 @@\n Hello, World`,
+			repl:   "xx",
+			output: `xx Hello, World`,
+		},
+		{
+			src:    `@@ -13120,22 @@\n `,
+			repl:   "xx",
+			output: `xx `,
+		},
+		{
+			src:    `@ -13120,3 +13120,22 @@\n `,
+			repl:   "xx",
+			output: `@ -13120,3 +13120,22 @@\n `,
+		},
+		{
+			src:    `@@jadghwbdxjnhdy3mdm ki3d@@\n `,
+			repl:   "xx",
+			output: `xx `,
+		},
+	}
+
+	for i, val := range td {
+		t.Run("Test_#"+strconv.Itoa(i), func(t *testing.T) {
+			result := ReplaceAddnDelMetrics(val.src, val.repl)
+			if val.output != result {
+				t.Fatalf("expected the returned string to be equal to '%s' but was '%s'",
+					val.output, result)
 			}
 		})
 	}

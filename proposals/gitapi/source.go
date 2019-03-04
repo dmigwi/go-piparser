@@ -1,6 +1,15 @@
 // Copyright 2019 Migwi Ndung'u.
 // License that can be found in the LICENSE file.
 
+// Package gitapi holds the various methods and functions that facilitate access
+// to Politeia votes data that is stored in github using the github API endpoints.
+// Github API endpoints are subject to a very low rate limit (60req/hr) unless
+// Authentication is provided. This package supports Oauth authentication which
+// is acheived by setting a github API access token while creating a New Parser
+// instance from this package.
+// NB!! THE GITHUB ACCESS TOKEN SHOULD NEVER PASTED ON THE SOURCE CODE AS IT
+// POSSES A SECURITY RISK IF LEAKED. WHEN USING THIS PACKAGE, SET THE ACCESS
+// TOKEN ON THE COMMAND LINE OR IN A CONFIGURATION FILE AWAY FROM THE SOURCE CODE.
 package gitapi
 
 import (
@@ -8,38 +17,42 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/dmigwi/go-piparser/v1/proposals/gitapi/piclient"
 	"github.com/dmigwi/go-piparser/v1/types"
 )
 
 // pageSize defines the number of records to be fetched from the github API in
-// a single API call.
+// a single API call. Altered using SetPageSize function.
 var pageSize = 20
 
 const (
+	// defaultAPIURL is a github root API URL since all proposals data is
+	// stored on github.
 	defaultAPIURL = "https://api.github.com"
 
-	// Sets that a maximum of 200 records per page can be fetched for processing
+	// Sets that a maximum of 100 records per page can be fetched for processing
 	// from the github API endpoints in a single API call.
-	maxQueriedPageSize = 200
+	maxQueriedPageSize = 100
 )
 
-// Parser holds the http client instance, repo Owner and repo Name.
-type Parser struct {
+// APIParser holds the http client instance, baseAPIURL, repo Owner and repo Name.
+// This data is used to make API requests.
+type APIParser struct {
 	repoOwner  string
 	repoName   string
 	baseAPIURL string
 	client     *http.Client
 }
 
-// NewParser returns a Parser instance with an initialized client, repoName and
-// repoOwner. It allows a http client with custom configuration to be set. It
+// NewParser returns an APIParser instance with an initialized client, repoName
+// and repoOwner. It allows a http client with custom configuration to be set. It
 // defaults to the piclient.NewHTTPClient() with general settings if no http client
 // was provided or a nil client was passed. If the repoName and repoOwner provided
 // are empty the defaults are set.
-func NewParser(repoOwner, repoName string, newInstance ...*http.Client) *Parser {
-	p := &Parser{
+func NewParser(repoOwner, repoName string, newInstance ...*http.Client) *APIParser {
+	p := &APIParser{
 		repoName:   repoName,
 		repoOwner:  repoOwner,
 		baseAPIURL: defaultAPIURL,
@@ -56,22 +69,21 @@ func NewParser(repoOwner, repoName string, newInstance ...*http.Client) *Parser 
 	return p
 }
 
-// SetProposalToken sets the specific proposal token whose vote details only should
+// SetProposalToken sets the specific proposal token whose only vote data should
 // be unmarshalled from the current list of commits.
-func (p *Parser) SetProposalToken(token string) error {
+func (p *APIParser) SetProposalToken(token string) error {
 	return types.SetProposalToken(token)
 }
 
 // SetAccessToken sets the github access token needed to enable making github
 // requests with a higher the rate limit than available for unauthenticated
-// requests.
-func (p *Parser) SetAccessToken(token string) error {
+// requests. https://developer.github.com/v3/#rate-limiting
+func (p *APIParser) SetAccessToken(token string) error {
 	return piclient.SetAccessToken(token)
 }
 
-// SetPageSize sets maximum number of records that can fetched in a single
-// API call.
-func (p *Parser) SetPageSize(size int) error {
+// SetPageSize sets the number of records to be fetched on consecutive API requests.
+func (p *APIParser) SetPageSize(size int) error {
 	if size < 1 || size > maxQueriedPageSize {
 		return fmt.Errorf("page size should be between 1 and %v", maxQueriedPageSize)
 	}
@@ -81,13 +93,15 @@ func (p *Parser) SetPageSize(size int) error {
 }
 
 // Proposal returns the commit history data associated with the provided token.
-func (p *Parser) Proposal(proposalToken string) (items []*types.History, err error) {
+func (p *APIParser) Proposal(proposalToken string) (items []*types.History, err error) {
 	defer types.ClearProposalToken()
+
+	if err = p.SetProposalToken(proposalToken); err != nil {
+		return
+	}
 
 	var page int
 	var data []*types.History
-
-	items = make([]*types.History, 0)
 
 	votesDir, err := p.retrieveVotesDirName(proposalToken)
 	if err != nil {
@@ -113,29 +127,54 @@ func (p *Parser) Proposal(proposalToken string) (items []*types.History, err err
 
 // proposal returns a proposal whose commit history count and page is defined by
 // the pageSize and the page values respectively.
-func (p *Parser) proposal(token, piVotesDirName string, page, pageSize int) ([]*types.History, error) {
+func (p *APIParser) proposal(token, piVotesDirName string, page, pageSize int) ([]*types.History, error) {
 	commitsSHA, err := p.retrieveSHAList(token, piVotesDirName, page, pageSize)
 	if err != nil {
 		return nil, err
 	}
 
-	items := make([]*types.History, 0)
+	var items []*types.History
 	for _, hash := range *commitsSHA {
 		if hash.SHA == "" {
 			continue
 		}
 
-		elem, err := p.retrieveCommit(hash.SHA)
+		// Politeia votes commits have only one parents because commits merging
+		// do not happen.
+		elem, err := p.retrieveCommit(hash.SHA, hash.Parents[0].SHA)
 		if err != nil {
 			return nil, err
 		}
 
 		if elem != nil {
-			if elem.AltResponse != nil && elem.Message != "" {
+			// Check if any errResponse compatible data was returned.
+			if elem.errResponse != nil && elem.Message != "" {
 				return nil, fmt.Errorf(elem.Message + " " + elem.URL)
 			}
+			committer := elem.Commit.Committer
 
-			items = append(items, elem)
+			// Parse the string into time.Time object.
+			t, err := time.Parse(time.RFC3339, committer.Date)
+			if err != nil {
+				return nil, err
+			}
+
+			// Set author's name and Email.
+			author := fmt.Sprintf("%s <%s>", committer.Name, committer.Email)
+
+			hist := &types.History{Author: author, CommitSHA: elem.SHA, Date: t}
+			for _, d := range (*elem).Files {
+				if len(d.Data) == 0 {
+					continue
+				}
+
+				// Only one instance of the current proposal token data is
+				// referenced per commit.
+				hist.VotesInfo = types.Votes(d.Data)
+				break
+			}
+
+			items = append(items, hist)
 		}
 	}
 	return items, nil
@@ -144,8 +183,8 @@ func (p *Parser) proposal(token, piVotesDirName string, page, pageSize int) ([]*
 // retrieveSHAList returns a list of commits SHA associated with the provided
 // proposal token string. The token string is used as a file path in the github
 // proposals repo.
-func (p *Parser) retrieveSHAList(token, piVotesDirName string,
-	page, pageSize int) (*types.HistorySHAs, error) {
+func (p *APIParser) retrieveSHAList(token, piVotesDirName string,
+	page, pageSize int) (*historySHAs, error) {
 	// Constructs the full commits SHA list url.
 	URLPath, err := piclient.SHAListURL(p.baseAPIURL, token, p.repoOwner, p.repoName,
 		piVotesDirName, page, pageSize)
@@ -159,10 +198,13 @@ func (p *Parser) retrieveSHAList(token, piVotesDirName string,
 		return nil, fmt.Errorf("piclient.GetRequestHandler failed: %v", err)
 	}
 
-	// Unmarshalls the commit SHA list into types.HistorySHAs.
-	var data types.HistorySHAs
+	// Unmarshalls the commit SHA list into types.historySHAs.
+	var data historySHAs
 	err = json.Unmarshal(list, &data)
 	if err != nil {
+		if er := constructAPIErr(list); er != nil {
+			return nil, er
+		}
 		return nil, fmt.Errorf("types.HistorySHAs unmarshalling failed: %v", err)
 	}
 
@@ -171,13 +213,18 @@ func (p *Parser) retrieveSHAList(token, piVotesDirName string,
 
 // retrieveCommit returns the unmarshalled commit data identified by the provided
 // commit SHA if it exists.
-func (p *Parser) retrieveCommit(commitSHA string) (*types.History, error) {
+func (p *APIParser) retrieveCommit(commitSHA, parentSHA string) (*rawHistory, error) {
 	if commitSHA == "" {
 		return nil, fmt.Errorf("missing commit SHA")
 	}
 
+	if parentSHA == "" {
+		return nil, fmt.Errorf("missing parent commit SHA")
+	}
+
 	// Constructs full commit content url path.
-	URLPath := piclient.CommitURL(p.baseAPIURL, commitSHA, p.repoOwner, p.repoName)
+	URLPath := piclient.CommitURL(p.baseAPIURL, commitSHA, parentSHA, p.repoOwner,
+		p.repoName)
 
 	// Fetch the commit content GET url path request.
 	content, err := piclient.GetRequestHandler(p.client, URLPath)
@@ -186,10 +233,14 @@ func (p *Parser) retrieveCommit(commitSHA string) (*types.History, error) {
 	}
 
 	// Unmarshal the commit content url response data.
-	var data types.History
+	var data rawHistory
 	err = json.Unmarshal(content, &data)
 	if err != nil {
-		return nil, fmt.Errorf("types.History unmarshalling failed: %v", err)
+		return nil, fmt.Errorf("rawHistory unmarshalling failed: %v", err)
+	}
+
+	if data.errResponse != nil && data.Message != "" {
+		return nil, fmt.Errorf(data.Message + " " + data.URL)
 	}
 
 	return &data, nil
@@ -197,7 +248,7 @@ func (p *Parser) retrieveCommit(commitSHA string) (*types.History, error) {
 
 // retrieveVotesDirName returns the folder name that contain ballot.journal file
 // in the git repo.
-func (p *Parser) retrieveVotesDirName(token string) (string, error) {
+func (p *APIParser) retrieveVotesDirName(token string) (string, error) {
 	// Construct the full proposal token string directories content url.
 	URLPath, err := piclient.ContentsURL(p.baseAPIURL, token, p.repoOwner, p.repoName)
 	if err != nil {
@@ -211,9 +262,13 @@ func (p *Parser) retrieveVotesDirName(token string) (string, error) {
 	}
 
 	// Unmarshals the returned directories data list.
-	dirs := make([]types.GitPropDirectories, 0)
+	var dirs []listDirs
+
 	err = json.Unmarshal(data, &dirs)
 	if err != nil {
+		if er := constructAPIErr(data); er != nil {
+			return "", er
+		}
 		return "", err
 	}
 
