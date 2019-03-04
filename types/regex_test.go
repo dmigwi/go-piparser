@@ -21,51 +21,6 @@ type testData struct {
 	timestamp         time.Time
 }
 
-func TestReplaceLineEndingChars(t *testing.T) {
-	td := []testData{
-		{
-			src:    "Hello, World",
-			repl:   "xx",
-			output: "Hello, World",
-		},
-		{
-			src: ` Flush vote journals.
-			`,
-			repl: "xx",
-			output: " Flush vote journals.xx			",
-		},
-		{
-			src: `Politeia 
-			is 
-			the 
-			Decred 
-			proposal 
-			system. `,
-			repl: "xx",
-			output: `Politeia xx			is xx			the xx			Decred xx			proposal xx			system. `,
-		},
-		{
-			src: `line 
-			
-			
-			
-			break`,
-			repl: "xx",
-			output: "line xx			xx			xx			xx			break",
-		},
-	}
-
-	for i, val := range td {
-		t.Run("Test_#"+strconv.Itoa(i), func(t *testing.T) {
-			result := ReplaceLineEndingChars(val.src, val.repl)
-			if val.output != result {
-				t.Fatalf("expected the returned string to be equal to '%s' but was '%s'",
-					val.output, result)
-			}
-		})
-	}
-}
-
 func TestRetrieveCMDAuthor(t *testing.T) {
 	td := []testData{
 		{
@@ -321,41 +276,6 @@ func TestIsMatching(t *testing.T) {
 			if result != val.isFound {
 				t.Fatalf("expected the matching src to the regex to be %v but found %v",
 					val.isFound, result)
-			}
-		})
-	}
-}
-
-func TestReplaceAddnDelMetrics(t *testing.T) {
-	td := []testData{
-		{
-			src:    `@@ -13120,3 +13120,22 @@\n Hello, World`,
-			repl:   "xx",
-			output: `xx Hello, World`,
-		},
-		{
-			src:    `@@ -13120,22 @@\n `,
-			repl:   "xx",
-			output: `xx `,
-		},
-		{
-			src:    `@ -13120,3 +13120,22 @@\n `,
-			repl:   "xx",
-			output: `@ -13120,3 +13120,22 @@\n `,
-		},
-		{
-			src:    `@@jadghwbdxjnhdy3mdm ki3d@@\n `,
-			repl:   "xx",
-			output: `xx `,
-		},
-	}
-
-	for i, val := range td {
-		t.Run("Test_#"+strconv.Itoa(i), func(t *testing.T) {
-			result := ReplaceAddnDelMetrics(val.src, val.repl)
-			if val.output != result {
-				t.Fatalf("expected the returned string to be equal to '%s' but was '%s'",
-					val.output, result)
 			}
 		})
 	}

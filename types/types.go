@@ -1,9 +1,9 @@
 // Copyright 2019 Migwi Ndung'u.
 // License that can be found in the LICENSE file.
 
-// Package types defines global data structures (used in gitcmd and gitapi) and
-// regular expressions that helps unmarshal commit history string into History
-// struct that can be shared with the outside world.
+// Package types defines data structures and regular expressions that helps to
+// unmarshal commit history string into a History struct to be shared with the
+// outside world.
 package types
 
 import (
@@ -24,11 +24,11 @@ const (
 	DefaultRepoOwner = "decred-proposals"
 
 	// DefaultVotesCommitMsg defines the message of the commits that holds
-	// the votes data for various proposal token(s).
+	// the votes data for the various proposal token(s).
 	DefaultVotesCommitMsg = "Flush vote journals"
 
-	// cmdDateFormat defines the date format returned by github via git cmd data
-	// source.
+	// cmdDateFormat defines the date format returned by git command line
+	// interface.
 	cmdDateFormat = "Mon Jan 2 15:04:05 2006 -0700"
 )
 
@@ -52,30 +52,36 @@ type Votes []CastVoteData
 // CastVoteData defines the struct of a cast vote and the reciept response.
 type CastVoteData struct {
 	*PiVote `json:"castvote"`
-	Receipt string `json:"receipt"`
+	// Receipt string `json:"receipt"`
 }
 
 // PiVote defines the finer details about a vote.
 type PiVote struct {
-	Token     string  `json:"token"`
-	Ticket    string  `json:"ticket"`
-	VoteBit   bitCast `json:"votebit"`
-	Signature string  `json:"signature"`
+	// Token     string  `json:"token"`
+	Ticket  string  `json:"ticket"`
+	VoteBit bitCast `json:"votebit"`
+	// Signature string  `json:"signature"`
 }
 
 // bitCast defines the votebit cast.
 type bitCast string
 
-// String is the default string for bitCast.
-func (b bitCast) String() string {
-	var data = map[bitCast]string{
-		"1": "No",
-		"2": "Yes",
+// UnmarshalJSON defines the bitcast unmarshaller that sets the vote id of the
+// vote bit cast.
+func (b *bitCast) UnmarshalJSON(d []byte) error {
+	var data = map[string]string{
+		`"1"`: "No",
+		`"2"`: "Yes",
 	}
-	if vote, ok := data[b]; ok {
-		return vote
+
+	vote, ok := data[string(d)]
+	if !ok {
+		vote = "Unknown"
 	}
-	return "Unknown"
+
+	*b = bitCast(vote)
+
+	return nil
 }
 
 // UnmarshalJSON defines the global unmarshaller for Votes in package gitapi and
@@ -92,6 +98,52 @@ func (v *Votes) UnmarshalJSON(b []byte) error {
 	}
 
 	*v = Votes(v2)
+
+	return nil
+}
+
+// CustomUnmashaller is the default unmarshaller for the History. The string
+// argument passed here is not a valid json string.
+func (h *History) CustomUnmashaller(str string) error {
+	if isMatched := IsMatching(str, VotesJSONSignature()); !isMatched {
+		// Required string payload could not be matched.
+		return nil
+	}
+
+	commit, err := RetrieveCMDCommit(str)
+	if err != nil {
+		return err // Missing commit SHA
+	}
+
+	author, err := RetrieveCMDAuthor(str)
+	if err != nil {
+		return err // Missing Author
+	}
+
+	date, err := RetrieveCMDDate(str)
+	if err != nil {
+		return err // Missing Date
+	}
+
+	str = RetrieveAllPatchSelection(str)
+
+	str = ReplaceJournalSelection(str, "")
+
+	// Add the square brackets to complete the JSON string array format.
+	str = "[" + str + "]"
+
+	var v Votes
+
+	if err = json.Unmarshal([]byte(str), &v); err != nil {
+		return fmt.Errorf("Unmarshalling Votes failed: %v", err)
+	}
+
+	*h = History{
+		Author:    author,
+		CommitSHA: commit,
+		Date:      date,
+		VotesInfo: v,
+	}
 
 	return nil
 }
