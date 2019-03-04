@@ -1,46 +1,98 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
+	"html/template"
 	"log"
+	"net/http"
+	"sync"
 	"time"
 
 	"github.com/dmigwi/go-piparser/v1/proposals"
 )
 
-func main() {
-	log.Println("Please Wait... ")
-	t := time.Now()
-	parser, err := proposals.NewExplorer("", "", "/home/dmigwi/playground")
+var tmpl *template.Template
+var parser *proposals.Parser
+
+// chartData defines the charts data to be used by charts js.
+type chartData struct {
+	Yes  int
+	No   int
+	Date time.Time
+}
+
+// Load the template files first.
+func init() {
+	tmpl = template.Must(template.ParseFiles("index.tmpl"))
+}
+
+// handleProposal handles /{proposal-token} route.
+func handleProposal(w http.ResponseWriter, r *http.Request) {
+	proposalToken := r.URL.
+
+	data, err := parser.Proposal(proposalToken)
 	if err != nil {
 		log.Fatalf("unexpected error occured: %v", err)
-		return
 	}
 
-	data, err := parser.Proposal("27f87171d98b7923a1bd2bee6affed929fa2d2a6e178b5c80a9971a92a5c7f50")
-	if err != nil {
-		log.Fatalf("unexpected error occured: %v", err)
-		return
-	}
-
-	log.Println("Data >>> ", len(data))
-
-	log.Println(" >>> Took :", time.Since(t))
-
-	var votesCastCount int
+	var graph []chartData
+	var yes, no int
 
 	for _, val := range data {
-		votesCastCount += len(val.VotesInfo)
+		for _, vote := range val.VotesInfo {
+			switch vote.VoteBit {
+			case "No":
+				no++
+			case "Yes":
+				yes++
+			default:
+				log.Fatalf("Invalid vote bit found: %v", vote.VoteBit)
+			}
+		}
+
+		graph = append(graph, chartData{Yes: yes, No: no, Date: val.Date})
 	}
 
-	log.Println("Votes Count >>> ", votesCastCount)
+	payload := struct {
+		Data  []chartData
+		Token string
+	}{
+		graph,
+		proposalToken,
+	}
 
-	s, err := json.Marshal(data)
+	err = tmpl.Execute(w, payload)
+	if err != nil {
+		log.Fatalf("error found: %v", err)
+	}
+}
+
+func main() {
+	log.Println("Please Wait... Setting up the environment")
+
+	var err error
+	cloneDir := "/home/dmigwi/playground"
+
+	parser, err = proposals.NewExplorer("", "", cloneDir)
 	if err != nil {
 		log.Fatalf("unexpected error occured: %v", err)
 		return
 	}
 
-	fmt.Println(" >>> ", string(s))
+	http.HandleFunc("/{token:[A-z0-9]{64}}", handleProposal)
+
+	wg := new(sync.WaitGroup)
+
+	wg.Add(1)
+
+	go func() {
+		log.Println("Serving on 127.0.0.1:8080")
+
+		if err := http.ListenAndServe(":8080", nil); err != nil {
+			log.Fatalf("error occured: %v ", err)
+
+			wg.Done()
+		}
+	}()
+
+	wg.Wait()
 }

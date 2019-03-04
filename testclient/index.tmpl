@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+    <header>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.bundle.min.js"></script>
+    </header>
+    <body>
+        <div>
+             <h1>Cummulative Graph for <a href="https://proposals.decred.org/proposals/{{.Token}}">{{.Token}}</a> proposal token </h1>
+            <canvas id="myChart" width="400" height="400"></canvas>
+        </div>
+
+        <script>
+            new Chart(document.getElementById("myChart"), {
+                type: 'line',
+                data: {{.Data}},
+                options: {
+                    scales: {
+                        yAxes: [{
+                            stacked: true
+                        }]
+                    }
+                }
+            });
+        </script>
+    </body>
+</html>
