@@ -1,15 +1,15 @@
 // Copyright 2019 Migwi Ndung'u.
 // License that can be found in the LICENSE file.
 
-// Package types defines the data types needed to serialize and unserialize the
-// the data sent or recieved.
+// Package types defines global data structures (used in gitcmd and gitapi) and
+// regular expressions that helps unmarshal commit history string into History
+// struct that can be shared with the outside world.
 package types
 
 import (
 	"encoding/json"
 	"fmt"
-	"regexp"
-	"strconv"
+	"time"
 
 	"github.com/decred/politeia/politeiad/backend/gitbe"
 )
@@ -23,9 +23,9 @@ const (
 	// Politeia votes are stored.
 	DefaultRepoOwner = "decred-proposals"
 
-	// defaultVotesCommitMsg defines the message of the commits that holds
+	// DefaultVotesCommitMsg defines the message of the commits that holds
 	// the votes data for various proposal token(s).
-	defaultVotesCommitMsg = "Flush vote journals"
+	DefaultVotesCommitMsg = "Flush vote journals"
 
 	// cmdDateFormat defines the date format returned by github via git cmd data
 	// source.
@@ -34,56 +34,16 @@ const (
 
 var journalActionFormat, proposalToken string
 
-// AltResponse is the possible alternative response returned if the default one
-// wasn't successful.
-type AltResponse struct {
-	Message string `json:"message"`
-	URL     string `json:"documentation_url"`
-}
+// Confirm that Votes implements the unmarshalling interface.
+var _ json.Unmarshaler = (*Votes)(nil)
 
-// HistorySHAs holds a slice of the commit history SHA token strings.
-type HistorySHAs []commitSHA
-
-// commitSHA holds the specific commit unique SHA string value.
-type commitSHA struct {
-	SHA string `json:"sha"`
-}
-
-// History defines the commit full information about a commit
+// History defines the standard single commit history contents to be shared
+// with the outside world.
 type History struct {
-	SHA     string    `json:"sha"`
-	Commit  Commit    `json:"commit"`
-	URLPath string    `json:"url"`
-	Files   []Content `json:"files"`
-	*AltResponse
-}
-
-// Commit defines information about the committer and the commit message used.
-type Commit struct {
-	Committer CommitInfo `json:"committer"`
-	Message   string     `json:"message"`
-}
-
-// CommitInfo defines information about the committer
-type CommitInfo struct {
-	Name  string `json:"name"`
-	Email string `json:"email"`
-	Date  string `json:"date"`
-}
-
-// Content defines the changes made, filename, actual file data and other details about
-// the about the commit content.
-type Content struct {
-	FileSHA    string `json:"sha"`
-	FileName   string `json:"filename"`
-	Status     string `json:"status"`
-	Additions  int32  `json:"additions"`
-	Deletions  int32  `json:"deletions"`
-	Change     int32  `json:"changes"`
-	BlobURL    string `json:"blob_url"`
-	RawURL     string `json:"raw_url"`
-	ContentURL string `json:"contents_url"`
-	Data       *Votes `json:"patch"`
+	Author    string
+	CommitSHA string
+	Date      time.Time
+	VotesInfo Votes
 }
 
 // Votes defines a slice type of all votes cast data.
@@ -103,8 +63,22 @@ type PiVote struct {
 	Signature string `json:"signature"`
 }
 
-type GitPropDirectories struct {
-	Name string
+// UnmarshalJSON defines the global unmarshaller for Votes in package gitapi and
+// gitcmd. The votes unmarshalling happens for all tokens in the current commit
+// message string unless the specific proposal token is set.
+func (v *Votes) UnmarshalJSON(b []byte) error {
+	// create a custom unmarshalling type to avoid being trapped in endless loop.
+	type votes2 Votes
+	var v2 votes2
+
+	err := json.Unmarshal(b, &v2)
+	if err != nil {
+		return err
+	}
+
+	*v = Votes(v2)
+
+	return nil
 }
 
 // SetProposalToken sets the current proposal token string whose data is being
@@ -116,6 +90,11 @@ func SetProposalToken(token string) error {
 
 	proposalToken = token
 	return nil
+}
+
+// GetProposalToken returns the current proposal token value.
+func GetProposalToken() string {
+	return proposalToken
 }
 
 // ClearProposalToken deletes the outdated proposal token value.
@@ -135,85 +114,4 @@ func SetJournalActionFormat() {
 	}
 
 	journalActionFormat = string(f)
-}
-
-// UnmarshalJSON defines the default unmarshaller for Votes. The votes unmarshalling
-// happens for all token in the current commit data unless specific proposalToken
-// is set.
-func (v *Votes) UnmarshalJSON(b []byte) error {
-	str := string(b)
-	if proposalToken == "" {
-		isMatched, err := regexp.MatchString(proposalToken, str)
-		if !isMatched || err != nil {
-			return err
-		}
-	}
-
-	isMatched, err := regexp.MatchString("castvote", str)
-	if !isMatched || err != nil {
-		return err
-	}
-
-	// Delete the special characters indicating addition and deletion metrics.
-	str = replaceUnwanted(str, `(@{2}[\s\S]*@{2})`, "")
-
-	// Drops github added special characters
-	str, _ = strconv.Unquote(str)
-	str = "[" + str + "]"
-
-	// Replace '[ {"version":"\d","action":"add|del"}' with '['.
-	str = replaceUnwanted(str, fmt.Sprintf(`([[][\s]*%s)`, journalActionFormat), "[")
-
-	// Replace '} +{"version":"\d","action":"add|del"}' with '},'.
-	str = replaceUnwanted(str, fmt.Sprintf(`(}[\s+]*%s)`, journalActionFormat), "},")
-
-	// Replace '[ +{"version":"\d","action":"add|del"}' with '['.
-	str = replaceUnwanted(str, fmt.Sprintf(`([[][\s+]*%s)`, journalActionFormat), "[")
-
-	// Replace '+\s' with ''.
-	str = replaceUnwanted(str, `([\s+]*)`, "")
-
-	// create a custom unmarshalling type to avoid being trapped in endless loop.
-	type votes2 Votes
-	var v2 votes2
-
-	err = json.Unmarshal([]byte(str), &v2)
-	if err != nil {
-		return err
-	}
-
-	*v = Votes(v2)
-
-	return nil
-}
-
-// UnmarshalJSON is the default unmarshaller for HistorySHA.
-func (h *HistorySHAs) UnmarshalJSON(b []byte) error {
-	// Match the defaultVotesCommitMsg string
-	if isMatched := IsMatching(string(b), defaultVotesCommitMsg); !isMatched {
-		return nil
-	}
-
-	// Match the proposalToken string
-	if proposalToken != "" {
-		if isMatched := IsMatching(string(b), proposalToken); !isMatched {
-			return fmt.Errorf("missing proposal token %s", proposalToken)
-		}
-	}
-
-	// Create a custom unmarshalling type to avoid being trapped in endless loop.
-	type history HistorySHAs
-	var h2 history
-
-	if err := json.Unmarshal(b, &h2); err != nil {
-		return err
-	}
-
-	*h = HistorySHAs(h2)
-	return nil
-}
-
-// replaceUnwanted replaces 'x' regex expression matchings in string 'str' with 'with'.
-func replaceUnwanted(str, x, with string) string {
-	return regexp.MustCompile(x).ReplaceAllLiteralString(str, with)
 }

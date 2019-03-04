@@ -54,7 +54,7 @@ func NewHTTPClient() *http.Client {
 // SetAccessToken sets the github access token, return an error if an empty
 // access token is being set.
 func SetAccessToken(token string) error {
-	if token == "" {
+	if len(token) == 0 {
 		return fmt.Errorf("empty github access token found " +
 			"(https://developer.github.com/v3/#rate-limiting)")
 	}

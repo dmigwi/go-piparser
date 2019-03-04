@@ -40,13 +40,29 @@ var (
 	// journalSelection matches the vote journal text line that takes the format.
 	// +{"version":"\d","action":"(add|del|addlike)"} e.g +{"version":"1","action":"add"}
 	// This journal section is appended to every individual vote result.
-	journalSelection = func() PiRegExp { return PiRegExp(`[+]` + journalActionFormat) }
+	journalSelection = func() PiRegExp {
+		return PiRegExp(`[+]` + journalActionFormat)
+	}
 
 	// patchSelection matches the flushed votes changes pushed for the current
 	// commit SHA. It matches all valid votes for the current time and commit.
 	// It starts where the journalSelection on a text line matches and ends where
 	// the line ending characters at matched at on the same text line.
-	patchSelection = func() PiRegExp { return PiRegExp(journalSelection() + `.*`) }
+	patchSelection = func() PiRegExp {
+		return PiRegExp(journalSelection() + `.*`)
+	}
+
+	// VotesJSONSignature defines part of the json string signature that match
+	// fully the commit patch sting required. The matched commit patch string
+	// contains the need votes data.
+	VotesJSONSignature = func() string {
+		return fmt.Sprintf(`{"castvote":{"token":"%s",`,
+			proposalToken)
+	}
+
+	// addDelMetricsSelection matches the addition and deletion metrics that
+	// as part of the patch field string from github API.
+	addDelMetricsSelection PiRegExp = `(@{2}[\s\S]*@{2})`
 )
 
 // exp compiles the PiRegExp regex expression type.
@@ -114,4 +130,11 @@ func IsMatching(parent, matchRegex string) bool {
 		return false
 	}
 	return true
+}
+
+// ReplaceAddnDelMetrics uses addDelMetricsSelection regular expression to delete
+// the addition and deletion (changes) metrics that appear in the patch field
+// string.
+func ReplaceAddnDelMetrics(parent, with string) string {
+	return addDelMetricsSelection.exp().ReplaceAllLiteralString(parent, with)
 }

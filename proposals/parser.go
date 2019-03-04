@@ -5,8 +5,10 @@ package proposals
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/dmigwi/go-piparser/v1/proposals/gitapi"
+	"github.com/dmigwi/go-piparser/v1/proposals/gitcmd"
 	"github.com/dmigwi/go-piparser/v1/types"
 )
 
@@ -22,6 +24,11 @@ type ExplorerDataSource interface {
 
 func NewAPIExplorer(accessToken, repoOwner, repoName string,
 	newInstance ...*http.Client) (ExplorerDataSource, error) {
+
+	// Trim trailing and leading whitespaces
+	repoName = strings.TrimSpace(repoName)
+	repoOwner = strings.TrimSpace(repoOwner)
+	accessToken = strings.TrimSpace(accessToken)
 
 	// Set defaults if empty values were passed
 	ValidateRepoProperties(&repoOwner, &repoName)
@@ -41,11 +48,26 @@ func NewAPIExplorer(accessToken, repoOwner, repoName string,
 	return parser, err
 }
 
-func NewCMDExplorer() {
+func NewCMDExplorer(repoOwner, repoName, rootCloneDir string) (
+	ExplorerDataSource, error) {
 
+	// Trim trailing and leading whitespaces
+	repoName = strings.TrimSpace(repoName)
+	repoOwner = strings.TrimSpace(repoOwner)
+	rootCloneDir = strings.TrimSpace(rootCloneDir)
+
+	// Set defaults if empty values were passed
+	ValidateRepoProperties(&repoOwner, &repoName)
+
+	parser, err := gitcmd.NewParser(repoName, repoOwner, rootCloneDir)
+	if err != nil {
+		return nil, err
+	}
+
+	return parser, nil
 }
 
-// validateRepoProperties sets the default repo name and repo user if empty
+// ValidateRepoProperties sets the default repo name and repo user if empty
 // value were passed.
 func ValidateRepoProperties(repoOwner, repoName *string) {
 	if *repoName == "" {
