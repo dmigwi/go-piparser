@@ -18,11 +18,6 @@ import (
 type PiRegExp string
 
 var (
-	// lineEndingSelection matches the occurence of a line-feed (\n) (newline)
-	// character (ASCII 10), a carriage return(\r) (ASCII 13) or a form-feed
-	// (\f) character (ASCII 12).
-	lineEndingSelection PiRegExp = `[\n\r\f]`
-
 	// cmdAuthorSelection matches a text line that starts with 'Author' and ends
 	// with line ending character(s) or its the actual end of the line.
 	cmdAuthorSelection PiRegExp = `Author[:\s]*(.*)`
@@ -62,16 +57,7 @@ var (
 )
 
 // exp compiles the PiRegExp regex expression type.
-func (e PiRegExp) exp() *regexp.Regexp {
-	return regexp.MustCompile(string(e))
-}
-
-// ReplaceLineEndingChars uses lineEndingSelection regex expression to replace
-// the line ending characters(line-feed, form-feed and carriage return characters)
-// in the provided parent string.
-func ReplaceLineEndingChars(parent, with string) string {
-	return lineEndingSelection.exp().ReplaceAllLiteralString(parent, with)
-}
+func (e PiRegExp) exp() *regexp.Regexp { return regexp.MustCompile(string(e)) }
 
 // RetrieveCMDAuthor uses cmdAuthorSelection regex expression to retrieve the
 // Author value in the provided parent string.

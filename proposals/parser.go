@@ -143,6 +143,12 @@ func (p *Parser) Proposal(proposalToken string) (items []*types.History, err err
 		}
 
 		h := types.History(*v2)
+
+		// Do not store any empty votes data.
+		if len(h.VotesInfo) == 0 || h.Author == "" || h.CommitSHA == "" {
+			continue
+		}
+
 		items = append(items, &h)
 	}
 

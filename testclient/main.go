@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"log"
 	"time"
 
@@ -33,4 +35,12 @@ func main() {
 	}
 
 	log.Println("Votes Count >>> ", votesCastCount)
+
+	s, err := json.Marshal(data)
+	if err != nil {
+		log.Fatalf("unexpected error occured: %v", err)
+		return
+	}
+
+	fmt.Println(" >>> ", string(s))
 }

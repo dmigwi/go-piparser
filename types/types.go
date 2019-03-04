@@ -66,16 +66,22 @@ type PiVote struct {
 // bitCast defines the votebit cast.
 type bitCast string
 
-// String is the default string for bitCast.
-func (b bitCast) String() string {
-	var data = map[bitCast]string{
-		"1": "No",
-		"2": "Yes",
+// UnmarshalJSON defines the bitcast unmarshaller that sets the vote id of the
+// vote bit cast.
+func (b *bitCast) UnmarshalJSON(d []byte) error {
+	var data = map[string]string{
+		`"1"`: "No",
+		`"2"`: "Yes",
 	}
-	if vote, ok := data[b]; ok {
-		return vote
+
+	vote, ok := data[string(d)]
+	if !ok {
+		vote = "Unknown"
 	}
-	return "Unknown"
+
+	*b = bitCast(vote)
+
+	return nil
 }
 
 // UnmarshalJSON defines the global unmarshaller for Votes in package gitapi and
@@ -130,11 +136,6 @@ func (h *History) CustomUnmashaller(str string) error {
 
 	if err = json.Unmarshal([]byte(str), &v); err != nil {
 		return fmt.Errorf("Unmarshalling Votes failed: %v", err)
-	}
-
-	// Do not store any empty votes data.
-	if len(v) == 0 {
-		return nil
 	}
 
 	*h = History{
