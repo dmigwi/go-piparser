@@ -13,6 +13,14 @@ type historySHAs []commitSHA
 
 // commitSHA holds the specific commit unique SHA string value.
 type commitSHA struct {
+	SHA     string         `json:"sha"`
+	Parents []parentCommit `json:"parents"`
+}
+
+// parentCommit defines the possible parent(s) of the current commit. A commit
+// can have several parents if several commits were joined together otherwise
+// it will have only one parent.
+type parentCommit struct {
 	SHA string `json:"sha"`
 }
 
@@ -38,8 +46,11 @@ type commitInfo struct {
 
 // votesData defines the changes made in the commit content.
 type votesData struct {
-	Data pitypes.Votes `json:"patch"`
+	Data copyVotes `json:"patch"`
 }
+
+// copyVotes helps unmarshall votes data from API endpoints.
+type copyVotes pitypes.Votes
 
 // listDirs defines the directories in the name of the repository directories.
 // The directories in github hold data about the proposals token and thier metadata.
@@ -76,35 +87,39 @@ func (h *historySHAs) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// UnmarshalJSON is the default unmarshaller for votesData struct.
-func (v *votesData) UnmarshalJSON(b []byte) error {
+// UnmarshalJSON is the default unmarshaller for copyVotes struct.
+func (v *copyVotes) UnmarshalJSON(b []byte) (err error) {
 	str := string(b)
+
+	str = pitypes.ReplaceAddnDelMetrics(str, "")
+
+	// Drops github added newline special characters.
+	str, err = strconv.Unquote(str)
+	if err != nil {
+		return err
+	}
+
 	if isMatched := pitypes.IsMatching(str, pitypes.VotesJSONSignature()); !isMatched {
 		// Required string payload could not be matched.
 		return nil
 	}
 
-	str = pitypes.ReplaceAddnDelMetrics(str, "")
-
 	str = pitypes.RetrieveAllPatchSelection(str)
 
 	str = pitypes.ReplaceJournalSelection(str, "")
-
-	// Drops github added newline special characters.
-	str, _ = strconv.Unquote(str)
 
 	// Add the square brackets to complete the JSON string array format.
 	str = "[" + str + "]"
 
 	// create a custom unmarshalling type to avoid being trapped in an endless loop.
-	type votes2 votesData
+	type votes2 copyVotes
 	var v2 votes2
 
-	if err := json.Unmarshal([]byte(str), &v2); err != nil {
+	if err = json.Unmarshal([]byte(str), &v2); err != nil {
 		return err
 	}
 
-	*v = votesData(v2)
+	*v = copyVotes(v2)
 
 	return nil
 }

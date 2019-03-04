@@ -86,26 +86,32 @@ func TestCommitURL(t *testing.T) {
 	repoOwner := "dmigwi"
 	repoName := "mainnet"
 	baseURL := "https://api.github.com"
+	expected1 := "https://api.github.com/repos/dmigwi/mainnet/commits"
+	commitSHA := "eced3135d573509e4460af56d148f177498be122"
+	parentCommitSHA := "97b8cba954735ec428f140b8d2a4bfa8"
+	expected2 := "https://api.github.com/repos/dmigwi/mainnet/commits/" +
+		"eced3135d573509e4460af56d148f177498be122#diff-97b8cba954735ec428f140b8d2a4bfa8"
 
-	commitSHA := ""
-	expected := "https://api.github.com/repos/dmigwi/mainnet/commits"
-	t.Run("Test_with_empty_commit_SHA", func(t *testing.T) {
-		resp := CommitURL(baseURL, commitSHA, repoOwner, repoName)
-		if resp != expected {
-			t.Fatalf("expected the returned result to be '%s' but found '%s' ", expected, resp)
-		}
-	})
+	type testData struct {
+		commit, parentCommit, URL string
+	}
 
-	commitSHA = "eced3135d573509e4460af56d148f177498be122"
-	expected = "https://api.github.com/repos/dmigwi/mainnet/commits/eced3135d573509e4460af56d148f177498be122"
+	td := []testData{
+		{"", "", expected1},
+		{commitSHA, "", expected1},
+		{"", parentCommitSHA, expected1},
+		{commitSHA, parentCommitSHA, expected2},
+	}
 
-	t.Run("Test_with_non_empty_SHA", func(t *testing.T) {
-		resp := CommitURL(baseURL, commitSHA, repoOwner, repoName)
-
-		if resp != expected {
-			t.Fatalf("expected the returned result to be '%s' but found '%s' ", expected, resp)
-		}
-	})
+	for i, val := range td {
+		t.Run("Test_#"+strconv.Itoa(i), func(t *testing.T) {
+			resp := CommitURL(baseURL, val.commit, val.parentCommit, repoOwner, repoName)
+			if resp != val.URL {
+				t.Fatalf("expected the returned result to be '%s' but found '%s' ",
+					val.URL, resp)
+			}
+		})
+	}
 }
 
 // TestSHAListURL tests the functionality of SHAListURL. The repoOwner, repoName,

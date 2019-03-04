@@ -25,4 +25,12 @@ func main() {
 	log.Println("Data >>> ", len(data))
 
 	log.Println(" >>> Took :", time.Since(t))
+
+	var votesCastCount int
+
+	for _, val := range data {
+		votesCastCount += len(val.VotesInfo)
+	}
+
+	log.Println("Votes Count >>> ", votesCastCount)
 }

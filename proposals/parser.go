@@ -33,7 +33,7 @@ func NewAPIExplorer(accessToken, repoOwner, repoName string,
 	// Set defaults if empty values were passed
 	ValidateRepoProperties(&repoOwner, &repoName)
 
-	var parser *gitapi.Parser
+	var parser *gitapi.APIParser
 	if len(newInstance) == 0 {
 		parser = gitapi.NewParser(repoOwner, repoName)
 	} else {

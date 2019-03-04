@@ -62,7 +62,7 @@ var (
 
 	// addDelMetricsSelection matches the addition and deletion metrics that
 	// as part of the patch field string from github API.
-	addDelMetricsSelection PiRegExp = `(@{2}[\s\S]*@{2})`
+	addDelMetricsSelection PiRegExp = `(@{2}[\s\S]*@{2}\\n)`
 )
 
 // exp compiles the PiRegExp regex expression type.

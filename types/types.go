@@ -57,10 +57,25 @@ type CastVoteData struct {
 
 // PiVote defines the finer details about a vote.
 type PiVote struct {
-	Token     string `json:"token"`
-	Ticket    string `json:"ticket"`
-	VoteBit   string `json:"votebit"`
-	Signature string `json:"signature"`
+	Token     string  `json:"token"`
+	Ticket    string  `json:"ticket"`
+	VoteBit   bitCast `json:"votebit"`
+	Signature string  `json:"signature"`
+}
+
+// bitCast defines the votebit cast.
+type bitCast string
+
+// String is the default string for bitCast.
+func (b bitCast) String() string {
+	var data = map[bitCast]string{
+		"1": "No",
+		"2": "Yes",
+	}
+	if vote, ok := data[b]; ok {
+		return vote
+	}
+	return "Unknown"
 }
 
 // UnmarshalJSON defines the global unmarshaller for Votes in package gitapi and

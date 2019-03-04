@@ -32,9 +32,9 @@ const (
 	// stored on github.
 	defaultAPIURL = "https://api.github.com"
 
-	// Sets that a maximum of 200 records per page can be fetched for processing
+	// Sets that a maximum of 100 records per page can be fetched for processing
 	// from the github API endpoints in a single API call.
-	maxQueriedPageSize = 200
+	maxQueriedPageSize = 100
 )
 
 // APIParser holds the http client instance, baseAPIURL, repo Owner and repo Name.
@@ -96,6 +96,10 @@ func (p *APIParser) SetPageSize(size int) error {
 func (p *APIParser) Proposal(proposalToken string) (items []*types.History, err error) {
 	defer types.ClearProposalToken()
 
+	if err = p.SetProposalToken(proposalToken); err != nil {
+		return
+	}
+
 	var page int
 	var data []*types.History
 
@@ -135,7 +139,9 @@ func (p *APIParser) proposal(token, piVotesDirName string, page, pageSize int) (
 			continue
 		}
 
-		elem, err := p.retrieveCommit(hash.SHA)
+		// Politeia votes commits have only one parents because commits merging
+		// do not happen.
+		elem, err := p.retrieveCommit(hash.SHA, hash.Parents[0].SHA)
 		if err != nil {
 			return nil, err
 		}
@@ -157,7 +163,6 @@ func (p *APIParser) proposal(token, piVotesDirName string, page, pageSize int) (
 			author := fmt.Sprintf("%s <%s>", committer.Name, committer.Email)
 
 			hist := &types.History{Author: author, CommitSHA: elem.SHA, Date: t}
-
 			for _, d := range (*elem).Files {
 				if len(d.Data) == 0 {
 					continue
@@ -165,7 +170,7 @@ func (p *APIParser) proposal(token, piVotesDirName string, page, pageSize int) (
 
 				// Only one instance of the current proposal token data is
 				// referenced per commit.
-				hist.VotesInfo = d.Data
+				hist.VotesInfo = types.Votes(d.Data)
 				break
 			}
 
@@ -208,13 +213,18 @@ func (p *APIParser) retrieveSHAList(token, piVotesDirName string,
 
 // retrieveCommit returns the unmarshalled commit data identified by the provided
 // commit SHA if it exists.
-func (p *APIParser) retrieveCommit(commitSHA string) (*rawHistory, error) {
+func (p *APIParser) retrieveCommit(commitSHA, parentSHA string) (*rawHistory, error) {
 	if commitSHA == "" {
 		return nil, fmt.Errorf("missing commit SHA")
 	}
 
+	if parentSHA == "" {
+		return nil, fmt.Errorf("missing parent commit SHA")
+	}
+
 	// Constructs full commit content url path.
-	URLPath := piclient.CommitURL(p.baseAPIURL, commitSHA, p.repoOwner, p.repoName)
+	URLPath := piclient.CommitURL(p.baseAPIURL, commitSHA, parentSHA, p.repoOwner,
+		p.repoName)
 
 	// Fetch the commit content GET url path request.
 	content, err := piclient.GetRequestHandler(p.client, URLPath)

@@ -13,8 +13,8 @@ import (
 
 const (
 	// rawCommitURL is a URL format that returns a single commit. Its general
-	// format is 'GET /repos/{owner}/{repo}/commits/{sha}'.
-	rawCommitURL = "/repos/%s/%s/commits/%s"
+	// format is 'GET /repos/{owner}/{repo}/commits/{sha}#diff-{parent-sha}'.
+	rawCommitURL = "/repos/%s/%s/commits/%s#diff-%s"
 
 	// rawCommitsURL is a URL format that returns all the commit. Its general
 	// format is 'GET /repos/{owner}/{repo}/commits'.
@@ -103,12 +103,13 @@ func GetRequestHandler(client *http.Client, URLPath string) ([]byte, error) {
 }
 
 // CommitURL constructs the complete commit or commits query github API endpoint.
-func CommitURL(baseURL, commitSHA, repoOwner, repoName string) string {
+func CommitURL(baseURL, commitSHA, parentCommitSHA, repoOwner, repoName string) string {
 	var path string
-	if commitSHA == "" {
+	if commitSHA == "" || parentCommitSHA == "" {
 		path = fmt.Sprintf(rawCommitsURL, repoOwner, repoName)
 	} else {
-		path = fmt.Sprintf(rawCommitURL, repoOwner, repoName, commitSHA)
+		path = fmt.Sprintf(rawCommitURL, repoOwner, repoName, commitSHA,
+			parentCommitSHA)
 	}
 
 	return baseURL + path

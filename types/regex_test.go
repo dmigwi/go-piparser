@@ -331,12 +331,12 @@ func TestReplaceAddnDelMetrics(t *testing.T) {
 		{
 			src:    `@@ -13120,3 +13120,22 @@\n Hello, World`,
 			repl:   "xx",
-			output: `xx\n Hello, World`,
+			output: `xx Hello, World`,
 		},
 		{
 			src:    `@@ -13120,22 @@\n `,
 			repl:   "xx",
-			output: `xx\n `,
+			output: `xx `,
 		},
 		{
 			src:    `@ -13120,3 +13120,22 @@\n `,
@@ -346,7 +346,7 @@ func TestReplaceAddnDelMetrics(t *testing.T) {
 		{
 			src:    `@@jadghwbdxjnhdy3mdm ki3d@@\n `,
 			repl:   "xx",
-			output: `xx\n `,
+			output: `xx `,
 		},
 	}
 
