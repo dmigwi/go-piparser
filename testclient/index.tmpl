@@ -4,23 +4,89 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.bundle.min.js"></script>
     </header>
     <body>
+
         <div>
-             <h1>Cummulative Graph for <a href="https://proposals.decred.org/proposals/{{.Token}}">{{.Token}}</a> proposal token </h1>
-            <canvas id="myChart" width="400" height="400"></canvas>
+            <canvas id="cummulative" style="width:1000px !important; height:400px !important;"></canvas>
+            <canvas id="votes-by-time" style="width:1000px !important; height:400px !important;"></canvas>
         </div>
 
         <script>
-            new Chart(document.getElementById("myChart"), {
+            var lineChartConfig = {
                 type: 'line',
-                data: {{.Data}},
+                data: {
+                    labels: {{.Cummulative.Date}},
+                    datasets: [{
+                        label: 'Yes',
+                        borderColor: '#2DD8A3',
+                        backgroundColor: '#2DD8A3',
+                        fill: false,
+                        data: {{.Cummulative.Yes}},
+                    }, {
+                        label: 'No',
+                        borderColor: '#ED6D47',
+                        backgroundColor: '#ED6D47',
+                        fill: false,
+                        data: {{.Cummulative.No}},
+                    }]
+                },
                 options: {
+                    width: 400,
+                    height: 200,
+                    responsive: true,
+                    title: {
+                        display: true,
+                        text: 'Cummulative votes Chart'
+                    },
+                    tooltips: { mode: 'index', intersect: false },
+                    hover: { mode: 'nearest', intersect: true  },
                     scales: {
+                        xAxes: [{
+                            display: true,
+                            scaleLabel: { display: true, labelString: 'Date'}
+                        }],
                         yAxes: [{
-                            stacked: true
+                            display: true,
+                            scaleLabel: {  display: true,labelString: 'Votes'}
                         }]
                     }
                 }
-            });
+            };
+
+            var barChartConfig ={
+                type: 'bar',
+                data: {
+                    labels: {{.VotesByTime.Date}},
+                    datasets: [{
+                        label: 'Yes',
+                        backgroundColor: '#2DD8A3',
+                        data: {{.VotesByTime.Yes}}
+                    }, {
+                        label: 'No',
+                        backgroundColor: '#ED6D47',
+                        data: {{.VotesByTime.No}}
+                    }]
+                },
+                options: {
+                    width: 400,
+                    height: 200,
+                    title: {
+                        display: true,
+                        text: 'Votes by Time Chart'
+                    },
+                    tooltips: { mode: 'index', intersect: false},
+                    responsive: true,
+                    scales: {
+                        xAxes: [{ stacked: true }],
+                        yAxes: [{ stacked: true }]
+                    }
+                }
+            }
+
+            window.onload = function() {
+                new Chart(document.getElementById('cummulative').getContext('2d'), lineChartConfig);
+
+                new Chart(document.getElementById('votes-by-time').getContext('2d'), barChartConfig);
+            };
         </script>
     </body>
 </html>

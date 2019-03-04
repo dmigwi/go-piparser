@@ -1,9 +1,9 @@
 // Copyright 2019 Migwi Ndung'u.
 // License that can be found in the LICENSE file.
 
-// Package types defines global data structures (used in gitcmd and gitapi) and
-// regular expressions that helps unmarshal commit history string into History
-// struct that can be shared with the outside world.
+// Package types defines data structures and regular expressions that helps to
+// unmarshal commit history string into a History struct to be shared with the
+// outside world.
 package types
 
 import (
@@ -24,11 +24,11 @@ const (
 	DefaultRepoOwner = "decred-proposals"
 
 	// DefaultVotesCommitMsg defines the message of the commits that holds
-	// the votes data for various proposal token(s).
+	// the votes data for the various proposal token(s).
 	DefaultVotesCommitMsg = "Flush vote journals"
 
-	// cmdDateFormat defines the date format returned by github via git cmd data
-	// source.
+	// cmdDateFormat defines the date format returned by git command line
+	// interface.
 	cmdDateFormat = "Mon Jan 2 15:04:05 2006 -0700"
 )
 

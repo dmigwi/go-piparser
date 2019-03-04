@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dmigwi/go-piparser/v1/proposals"
+	"github.com/gorilla/mux"
 )
 
 var tmpl *template.Template
@@ -15,9 +16,9 @@ var parser *proposals.Parser
 
 // chartData defines the charts data to be used by charts js.
 type chartData struct {
-	Yes  int
-	No   int
-	Date time.Time
+	Yes  []int       // Yes
+	No   []int       // No
+	Date []time.Time // Date
 }
 
 // Load the template files first.
@@ -27,43 +28,71 @@ func init() {
 
 // handleProposal handles /{proposal-token} route.
 func handleProposal(w http.ResponseWriter, r *http.Request) {
-	proposalToken := r.URL.
+	proposalToken := mux.Vars(r)["token"]
 
+	log.Printf("Retrieving details for %s ...\n", proposalToken)
 	data, err := parser.Proposal(proposalToken)
 	if err != nil {
 		log.Fatalf("unexpected error occured: %v", err)
 	}
 
-	var graph []chartData
+	log.Printf("Processing charts data for %s ...\n", proposalToken)
+	var graph1, graph2 chartData
 	var yes, no int
 
 	for _, val := range data {
+		var y, n int
 		for _, vote := range val.VotesInfo {
 			switch vote.VoteBit {
 			case "No":
 				no++
+				n++
 			case "Yes":
 				yes++
+				y++
 			default:
 				log.Fatalf("Invalid vote bit found: %v", vote.VoteBit)
 			}
 		}
 
-		graph = append(graph, chartData{Yes: yes, No: no, Date: val.Date})
+		graph1.Yes = append(graph1.Yes, yes)
+		graph1.No = append(graph1.No, no)
+		graph1.Date = append(graph1.Date, val.Date)
+
+		graph2.Yes = append(graph2.Yes, y)
+		graph2.No = append(graph2.No, n)
+		graph2.Date = append(graph2.Date, val.Date)
 	}
 
 	payload := struct {
-		Data  []chartData
-		Token string
+		Cummulative chartData
+		VotesByTime chartData
+		Token       string
 	}{
-		graph,
+		graph1,
+		graph2,
 		proposalToken,
+	}
+
+	c := len(graph1.Yes)
+	if c > 1 {
+		var yes, no, total int
+
+		c--
+		yes, no = graph1.Yes[c], graph1.No[c]
+		total = yes + no
+
+		log.Printf("Found Yes: %d No: %d and Total %d \n", yes, no, total)
+	} else {
+		log.Fatalf(" **Found no valid chart data** ")
 	}
 
 	err = tmpl.Execute(w, payload)
 	if err != nil {
 		log.Fatalf("error found: %v", err)
 	}
+
+	log.Println("Done.")
 }
 
 func main() {
@@ -78,7 +107,10 @@ func main() {
 		return
 	}
 
-	http.HandleFunc("/{token:[A-z0-9]{64}}", handleProposal)
+	rtr := mux.NewRouter()
+	rtr.HandleFunc("/{token:[A-z0-9]{64}}", handleProposal).Methods("GET")
+
+	http.Handle("/", rtr)
 
 	wg := new(sync.WaitGroup)
 

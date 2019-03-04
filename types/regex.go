@@ -14,7 +14,8 @@ import (
 // here. More on the regular expressions syntax used can be found here,
 // https://github.com/google/re2/wiki/Syntax.
 
-// PiRegExp helps defines the various regex expression supported.
+// PiRegExp helps defines the various regex expression supported. It also helps
+// to easily compile them.
 type PiRegExp string
 
 var (
@@ -34,7 +35,7 @@ var (
 
 	// journalSelection matches the vote journal text line that takes the format.
 	// +{"version":"\d","action":"(add|del|addlike)"} e.g +{"version":"1","action":"add"}
-	// This journal section is appended to every individual vote result.
+	// This journal section is appended to every individual vote cast result.
 	journalSelection = func() PiRegExp {
 		return PiRegExp(`[+]` + journalActionFormat)
 	}
