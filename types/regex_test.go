@@ -325,38 +325,3 @@ func TestIsMatching(t *testing.T) {
 		})
 	}
 }
-
-func TestReplaceAddnDelMetrics(t *testing.T) {
-	td := []testData{
-		{
-			src:    `@@ -13120,3 +13120,22 @@\n Hello, World`,
-			repl:   "xx",
-			output: `xx Hello, World`,
-		},
-		{
-			src:    `@@ -13120,22 @@\n `,
-			repl:   "xx",
-			output: `xx `,
-		},
-		{
-			src:    `@ -13120,3 +13120,22 @@\n `,
-			repl:   "xx",
-			output: `@ -13120,3 +13120,22 @@\n `,
-		},
-		{
-			src:    `@@jadghwbdxjnhdy3mdm ki3d@@\n `,
-			repl:   "xx",
-			output: `xx `,
-		},
-	}
-
-	for i, val := range td {
-		t.Run("Test_#"+strconv.Itoa(i), func(t *testing.T) {
-			result := ReplaceAddnDelMetrics(val.src, val.repl)
-			if val.output != result {
-				t.Fatalf("expected the returned string to be equal to '%s' but was '%s'",
-					val.output, result)
-			}
-		})
-	}
-}

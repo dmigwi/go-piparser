@@ -59,10 +59,6 @@ var (
 		return fmt.Sprintf(`{"castvote":{"token":"%s",`,
 			proposalToken)
 	}
-
-	// addDelMetricsSelection matches the addition and deletion metrics that
-	// as part of the patch field string from github API.
-	addDelMetricsSelection PiRegExp = `(@{2}[\s\S]*@{2}\\n)`
 )
 
 // exp compiles the PiRegExp regex expression type.
@@ -130,11 +126,4 @@ func IsMatching(parent, matchRegex string) bool {
 		return false
 	}
 	return true
-}
-
-// ReplaceAddnDelMetrics uses addDelMetricsSelection regular expression to delete
-// the addition and deletion (changes) metrics that appear in the patch field
-// string.
-func ReplaceAddnDelMetrics(parent, with string) string {
-	return addDelMetricsSelection.exp().ReplaceAllLiteralString(parent, with)
 }

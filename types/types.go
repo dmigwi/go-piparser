@@ -52,15 +52,15 @@ type Votes []CastVoteData
 // CastVoteData defines the struct of a cast vote and the reciept response.
 type CastVoteData struct {
 	*PiVote `json:"castvote"`
-	Receipt string `json:"receipt"`
+	// Receipt string `json:"receipt"`
 }
 
 // PiVote defines the finer details about a vote.
 type PiVote struct {
-	Token     string  `json:"token"`
-	Ticket    string  `json:"ticket"`
-	VoteBit   bitCast `json:"votebit"`
-	Signature string  `json:"signature"`
+	// Token     string  `json:"token"`
+	Ticket  string  `json:"ticket"`
+	VoteBit bitCast `json:"votebit"`
+	// Signature string  `json:"signature"`
 }
 
 // bitCast defines the votebit cast.
@@ -92,6 +92,57 @@ func (v *Votes) UnmarshalJSON(b []byte) error {
 	}
 
 	*v = Votes(v2)
+
+	return nil
+}
+
+// CustomUnmashaller is the default unmarshaller for the History. The string
+// argument passed here is not a valid json string.
+func (h *History) CustomUnmashaller(str string) error {
+	if isMatched := IsMatching(str, VotesJSONSignature()); !isMatched {
+		// Required string payload could not be matched.
+		return nil
+	}
+
+	commit, err := RetrieveCMDCommit(str)
+	if err != nil {
+		return err // Missing commit SHA
+	}
+
+	author, err := RetrieveCMDAuthor(str)
+	if err != nil {
+		return err // Missing Author
+	}
+
+	date, err := RetrieveCMDDate(str)
+	if err != nil {
+		return err // Missing Date
+	}
+
+	str = RetrieveAllPatchSelection(str)
+
+	str = ReplaceJournalSelection(str, "")
+
+	// Add the square brackets to complete the JSON string array format.
+	str = "[" + str + "]"
+
+	var v Votes
+
+	if err = json.Unmarshal([]byte(str), &v); err != nil {
+		return fmt.Errorf("Unmarshalling Votes failed: %v", err)
+	}
+
+	// Do not store any empty votes data.
+	if len(v) == 0 {
+		return nil
+	}
+
+	*h = History{
+		Author:    author,
+		CommitSHA: commit,
+		Date:      date,
+		VotesInfo: v,
+	}
 
 	return nil
 }

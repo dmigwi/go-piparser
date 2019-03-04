@@ -10,7 +10,7 @@ import (
 func main() {
 	log.Println("Please Wait... ")
 	t := time.Now()
-	parser, err := proposals.NewCMDExplorer("", "", "/home/dmigwi/playground")
+	parser, err := proposals.NewExplorer("", "", "/home/dmigwi/playground")
 	if err != nil {
 		log.Fatalf("unexpected error occured: %v", err)
 		return
