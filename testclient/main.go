@@ -99,7 +99,7 @@ func main() {
 	log.Println("Please Wait... Setting up the environment")
 
 	var err error
-	cloneDir := "/home/dmigwi/playground"
+	cloneDir := "~/playground"
 
 	parser, err = proposals.NewExplorer("", "", cloneDir)
 	if err != nil {
