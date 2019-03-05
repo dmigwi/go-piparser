@@ -4,7 +4,7 @@
 ![GitHub top language](https://img.shields.io/github/languages/top/dmigwi/go-piparser.svg?color=green&style=popout)
 
 go-piparser is tool that parses [Politeia](https://proposals.decred.org) proposals votes data stored in github.
-It adds a timestamp field obtained from the commit history. The tool makes use of the git command line interface to clone 
+It adds a timestamp field obtained from the commit history. The tool makes use of the git commandline interface to clone 
 and query the politeia votes data.
 
 
@@ -21,7 +21,7 @@ and query the politeia votes data.
 
 ## Requirement
 
-- git -  The tool requires a functional git command line installation.
+- git -  The tool requires a functional git commandline installation.
 To install git visit [here](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
 
 ## Installation

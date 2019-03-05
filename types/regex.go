@@ -10,8 +10,8 @@ import (
 	"time"
 )
 
-// All regular expression used in this package are documented and implemented
-// here. More on the regular expressions syntax used can be found here,
+// All regular expressions used in this tool are documented and implemented here.
+// More on the regular expressions syntax used can be found here,
 // https://github.com/google/re2/wiki/Syntax.
 
 // PiRegExp helps defines the various regex expression supported. It also helps
@@ -25,15 +25,16 @@ var (
 
 	// cmdCommitSelection matches a text line that starts with 'commit' or a
 	// white space character and ends with line ending character(s) or its the
-	// actual end of the line. The commit SHA part will always be the start of the
-	// commit message after the whole git cmd history is split into individual messages.
+	// actual end of the line. The commit SHA part will always be the start of
+	// the commit message after the whole git cmd history string is split into
+	// individual messages.
 	cmdCommitSelection PiRegExp = `[(^ )commit]*[:\s]*(.*)`
 
 	// cmdDateSelection matches a text line that starts with 'Date' and ends with
 	// line ending character(s) or its the actual end of the line.
 	cmdDateSelection PiRegExp = `Date[:\s]*(.*)`
 
-	// journalSelection matches the vote journal text line that takes the format.
+	// journalSelection matches the vote journal text line that takes the format,
 	// +{"version":"\d","action":"(add|del|addlike)"} e.g +{"version":"1","action":"add"}
 	// This journal section is appended to every individual vote cast result.
 	journalSelection = func() PiRegExp {
@@ -48,9 +49,9 @@ var (
 		return PiRegExp(journalSelection() + `.*`)
 	}
 
-	// VotesJSONSignature defines part of the json string signature that match
-	// fully the commit patch sting required. The matched commit patch string
-	// contains the need votes data.
+	// VotesJSONSignature defines a part of the json string signature that
+	// matches the commit patch string required. The matched commit patch string
+	// contains the needed votes data.
 	VotesJSONSignature = func() string {
 		return fmt.Sprintf(`{"castvote":{"token":"%s",`,
 			proposalToken)

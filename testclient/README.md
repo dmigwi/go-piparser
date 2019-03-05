@@ -9,13 +9,13 @@ This is a http server that parses and serves data of the proposal token set on t
     git --version
 ```
 
-## Clone the repository
+## Clone this repository
 
 ```bash
     git clone https://github.com/dmigwi/go-piparser.git
 ```
 
-## Create a clone directory
+## Create the tool clone directory
 
 ```bash
     mkdir -p ~/playground
@@ -24,6 +24,8 @@ This is a http server that parses and serves data of the proposal token set on t
 ## Start Server
 
 ```bash
+    cd go-piparser/testclient
+
     $ go build . && ./testclient
     2019/03/05 11:44:09 Please Wait... Setting up the environment
     2019/03/05 11:44:09 Serving on 127.0.0.1:8080
@@ -37,7 +39,7 @@ This is a http server that parses and serves data of the proposal token set on t
 now access the URL `http://localhost:8080/27f87171d98b7923a1bd2bee6affed929fa2d2a6e178b5c80a9971a92a5c7f50` on the browser.
 
 
-### Copy it to the server URL path
+### Logs on the Terminal/CMD interface
 
 ```bash
     2019/03/05 11:44:29 Retrieving details for 27f87171d98b7923a1bd2bee6affed929fa2d2a6e178b5c80a9971a92a5c7f50 ...

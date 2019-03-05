@@ -10,15 +10,15 @@ import (
 )
 
 // go-piparser parses the politeia's github stored data to primarily fetch the
-// votes data. The votes data returned contain a time.Time field that is
-// obtained from the individual commit messages. The go-piparser data output
-// can be used to do lots of things which include ploting charts.
+// votes data. The votes data returned contain a time.Time field obtained from
+// the individual commit messages. The go-piparser data output can be used to
+// do lots of things which include but not limited to ploting charts.
 // For charts: See the testclient.
 
 var t, _ = time.Parse(types.CmdDateFormat, "Mon Nov 5 17:58:13 2018 +0000")
 
 // VotesData defines the actual votes data result returned after parsing the
-// the raw commmit message string in data/raw.go
+// the raw commmits message string in data/raw.go.
 var VotesData = []*types.History{
 	&types.History{
 		Author:    "",

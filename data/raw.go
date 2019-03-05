@@ -5,8 +5,8 @@
 // go-piparser tool.
 package data
 
-// RawGitCommit define the raw query data of what go-piparser is expected to
-// parse and fetch useful information from.
+// RawGitCommit define a sample raw commits history data returned by the git cmd
+// from which go-piparser is expected to parse and fetch useful information from.
 const RawGitCommit = `
 commit 909d908124d8aa9f054ce07b526c4d4d84b9fc01
 Author: Politeia <noreply@decred.org>

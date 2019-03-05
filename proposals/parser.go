@@ -3,8 +3,8 @@
 
 // Package proposals holds the various methods and functions that facilitate
 // access to Politeia votes data cloned from github and accessed using
-// the git command line interface. Pre-Installation of the git cmd tool is a
-// requirement for effective functionality use with this tool.
+// the git commandline interface. Pre-Installation of the git cmd tool is a
+// requirement for effective functionality use.
 package proposals
 
 import (
@@ -21,16 +21,16 @@ import (
 
 const (
 	// gitCmd defines the prefix string for all commands issued to the git
-	// command line interface.
+	// commandline interface.
 	gitCmd = "git"
 
-	// listCommitsArg defines the git command line argument that lists the repo
+	// listCommitsArg defines the git commandline argument that lists the repo
 	// commit history in a chronoligical order. The oldest commit is listed as
 	// the last.
 	listCommitsArg = "log"
 
 	// commitPatchArg is an optional argument that is added to show the commit
-	// history with a patch(changes made) field included.
+	// history with a patch (changes made) field included.
 	commitPatchArg = "-p"
 
 	// cloneArg is the argument added between the git prefix command and the
@@ -50,8 +50,8 @@ const (
 	// 'origin' is the default set.
 	remoteURLRef = "origin"
 
-	// remoteURL uses the https protocol URL instead of git or ssh protocol. git
-	// protocol may be faster but it requires a dedicated port (9418) to be
+	// remoteURL uses the https protocol instead of git or ssh protocol. git
+	// protocol may be faster but requires a dedicated port (9418) to be
 	// open always. ssh requires authentication which is clearly not necessary
 	// in this case scenario. Find out more on the access protcols here:
 	// https://git-scm.com/book/en/v2/Git-on-the-Server-The-Protocols
@@ -78,7 +78,8 @@ func init() {
 
 // NewExplorer returns a Parser instance with a repoName, cloneDir and repoOwner
 // set. If the repoName and repoOwner provided are empty, the defaults are set.
-// If the cloneDir is not provided, a dir in the tmp folder is created and set.
+// If the cloneDir is not provided or an invalid path is provided, a dir in the
+// tmp folder is created and set.
 func NewExplorer(repoOwner, repo, rootCloneDir string) (*Parser, error) {
 	// Trim trailing and leading whitespaces
 	repo = strings.TrimSpace(repo)
@@ -113,7 +114,7 @@ func NewExplorer(repoOwner, repo, rootCloneDir string) (*Parser, error) {
 	return p, nil
 }
 
-// Proposal returns the all the commit history data associated with the provided
+// Proposal returns the all the commits history data associated with the provided
 // proposal token.
 func (p *Parser) Proposal(proposalToken string) (items []*types.History, err error) {
 	if err = types.SetProposalToken(proposalToken); err != nil {
@@ -138,7 +139,11 @@ func (p *Parser) Proposal(proposalToken string) (items []*types.History, err err
 	}
 
 	for _, entry := range data {
-		if len(entry) == 0 {
+		// strings.Split returns some split strings as empty or with just
+		// whitespaces and other special charactes. This happens when
+		// the seperating argument is the first in the source string or is
+		// surrounded by whitespaces and other special characters.
+		if len(strings.TrimSpace(entry)) == 0 {
 			continue
 		}
 
@@ -147,7 +152,7 @@ func (p *Parser) Proposal(proposalToken string) (items []*types.History, err err
 		// entry string is not a valid JSON string format thus the use of a
 		// customized unmarshaller.
 		if err = types.CustomUnmashaller(&h, entry); err != nil {
-			return nil, fmt.Errorf("History.CustomUnmashaller failed: %v", err)
+			return nil, fmt.Errorf("CustomUnmashaller failed: %v", err)
 		}
 
 		// Do not store any empty votes data.
@@ -162,8 +167,8 @@ func (p *Parser) Proposal(proposalToken string) (items []*types.History, err err
 }
 
 // proposal queries the provided proposal token's data from the cloned
-// repository using the installed git command line interface. The single string
-// of commit messages is split into a slice of individual commit messages and
+// repository using the installed git commandline interface. The single string
+// of commits message is split into a slice of individual commit messages and
 // returned.
 func (p *Parser) proposal(proposalToken string) ([]string, error) {
 	patchData, err := p.readCommandOutput(gitCmd, listCommitsArg,
@@ -175,7 +180,7 @@ func (p *Parser) proposal(proposalToken string) ([]string, error) {
 	return strings.Split(patchData, "commit"), nil
 }
 
-// updateEnv ensures that a working git command line tool is installed in the
+// updateEnv ensures that a working git commandline tool is installed in the
 // underlying platform. It also checks if the required repo was cloned earlier.
 // If the repo was cloned earlier, the latest changes are pulled and if an error
 // occurs while pulling updates, the old repo version is dropped and a fresh
