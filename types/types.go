@@ -27,9 +27,9 @@ const (
 	// the votes data for the various proposal token(s).
 	DefaultVotesCommitMsg = "Flush vote journals"
 
-	// cmdDateFormat defines the date format returned by git command line
+	// CmdDateFormat defines the date format returned by git command line
 	// interface.
-	cmdDateFormat = "Mon Jan 2 15:04:05 2006 -0700"
+	CmdDateFormat = "Mon Jan 2 15:04:05 2006 -0700"
 )
 
 var journalActionFormat, proposalToken string
@@ -67,21 +67,27 @@ type PiVote struct {
 type bitCast string
 
 // UnmarshalJSON defines the bitcast unmarshaller that sets the vote id of the
-// vote bit cast.
+// vote bit Cast.
 func (b *bitCast) UnmarshalJSON(d []byte) error {
-	var data = map[string]string{
+	// bitCast data mapping.
+	// TODO: source this data directly from github.
+	var data = map[bitCast]string{
 		`"1"`: "No",
 		`"2"`: "Yes",
+		`"3"`: "Unknown", // invalid entry. Wherever its found something went wrong.
 	}
-
-	vote, ok := data[string(d)]
+	vote, ok := data[bitCast(d)]
 	if !ok {
 		vote = "Unknown"
 	}
 
 	*b = bitCast(vote)
-
 	return nil
+}
+
+// ToBitcast casts the vote Id bitCast type.
+func ToBitcast(in string) bitCast {
+	return bitCast(in)
 }
 
 // UnmarshalJSON defines the global unmarshaller for Votes in package gitapi and
@@ -102,9 +108,9 @@ func (v *Votes) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// CustomUnmashaller is the default unmarshaller for the History. The string
-// argument passed here is not a valid json string.
-func (h *History) CustomUnmashaller(str string) error {
+// CustomUnmashaller unmarshals the string argument passed and is not in
+// JSON format into the History argument passed.
+func CustomUnmashaller(h *History, str string) error {
 	if isMatched := IsMatching(str, VotesJSONSignature()); !isMatched {
 		// Required string payload could not be matched.
 		return nil
@@ -128,7 +134,6 @@ func (h *History) CustomUnmashaller(str string) error {
 	str = RetrieveAllPatchSelection(str)
 
 	str = ReplaceJournalSelection(str, "")
-
 	// Add the square brackets to complete the JSON string array format.
 	str = "[" + str + "]"
 
@@ -138,12 +143,10 @@ func (h *History) CustomUnmashaller(str string) error {
 		return fmt.Errorf("Unmarshalling Votes failed: %v", err)
 	}
 
-	*h = History{
-		Author:    author,
-		CommitSHA: commit,
-		Date:      date,
-		VotesInfo: v,
-	}
+	h.Author = author
+	h.CommitSHA = commit
+	h.Date = date
+	h.VotesInfo = v
 
 	return nil
 }

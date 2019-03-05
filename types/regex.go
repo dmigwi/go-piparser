@@ -76,7 +76,7 @@ func RetrieveCMDAuthor(parent string) (string, error) {
 func RetrieveCMDDate(parent string) (time.Time, error) {
 	data := cmdDateSelection.exp().FindStringSubmatch(parent)
 	if len(data) > 1 && data[1] != "" {
-		return time.Parse(cmdDateFormat, data[1])
+		return time.Parse(CmdDateFormat, data[1])
 	}
 	return time.Time{}, fmt.Errorf("missing Date from the parsed string")
 }
