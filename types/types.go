@@ -1,9 +1,8 @@
 // Copyright 2019 Migwi Ndung'u.
 // License that can be found in the LICENSE file.
 
-// Package types defines data structures and regular expressions that helps to
-// unmarshal commit history string into a History struct to be shared with the
-// outside world.
+// Package types defines the data structures and regular expressions that helps
+// to unmarshal commits history string into data to be shared with the outside world.
 package types
 
 import (
@@ -27,9 +26,9 @@ const (
 	// the votes data for the various proposal token(s).
 	DefaultVotesCommitMsg = "Flush vote journals"
 
-	// cmdDateFormat defines the date format returned by git command line
+	// CmdDateFormat defines the date format of the time returned by git commandline
 	// interface.
-	cmdDateFormat = "Mon Jan 2 15:04:05 2006 -0700"
+	CmdDateFormat = "Mon Jan 2 15:04:05 2006 -0700"
 )
 
 var journalActionFormat, proposalToken string
@@ -46,7 +45,7 @@ type History struct {
 	VotesInfo Votes
 }
 
-// Votes defines a slice type of all votes cast data.
+// Votes defines a slice type of votes cast data.
 type Votes []CastVoteData
 
 // CastVoteData defines the struct of a cast vote and the reciept response.
@@ -55,7 +54,7 @@ type CastVoteData struct {
 	// Receipt string `json:"receipt"`
 }
 
-// PiVote defines the finer details about a vote.
+// PiVote defines the ticket hash and vote bit type details about a vote.
 type PiVote struct {
 	// Token     string  `json:"token"`
 	Ticket  string  `json:"ticket"`
@@ -66,29 +65,34 @@ type PiVote struct {
 // bitCast defines the votebit cast.
 type bitCast string
 
-// UnmarshalJSON defines the bitcast unmarshaller that sets the vote id of the
+// UnmarshalJSON defines the bitCast unmarshaller that sets the vote id of the
 // vote bit cast.
 func (b *bitCast) UnmarshalJSON(d []byte) error {
-	var data = map[string]string{
+	// bitCast data mapping.
+	// TODO: source this data directly from github.
+	var data = map[bitCast]string{
 		`"1"`: "No",
 		`"2"`: "Yes",
+		`"3"`: "Unknown", // invalid entry. Wherever its found something went wrong.
 	}
-
-	vote, ok := data[string(d)]
+	vote, ok := data[bitCast(d)]
 	if !ok {
 		vote = "Unknown"
 	}
 
 	*b = bitCast(vote)
-
 	return nil
 }
 
-// UnmarshalJSON defines the global unmarshaller for Votes in package gitapi and
-// gitcmd. The votes unmarshalling happens for all tokens in the current commit
-// message string unless the specific proposal token is set.
+// ToBitcast casts the vote Id bitCast type.
+func ToBitcast(in string) bitCast {
+	return bitCast(in)
+}
+
+// UnmarshalJSON defines the default unmarshaller for Votes.
 func (v *Votes) UnmarshalJSON(b []byte) error {
-	// create a custom unmarshalling type to avoid being trapped in endless loop.
+	// create a custom unmarshalling type to avoid being trapped in
+	// an endless loop.
 	type votes2 Votes
 	var v2 votes2
 
@@ -102,9 +106,10 @@ func (v *Votes) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// CustomUnmashaller is the default unmarshaller for the History. The string
-// argument passed here is not a valid json string.
-func (h *History) CustomUnmashaller(str string) error {
+// CustomUnmashaller unmarshals the string argument passed. Its not in JSON
+// format. History unmarshalling happens ONLY for the set proposal token and
+// for none if otherwise (not set).
+func CustomUnmashaller(h *History, str string) error {
 	if isMatched := IsMatching(str, VotesJSONSignature()); !isMatched {
 		// Required string payload could not be matched.
 		return nil
@@ -128,7 +133,6 @@ func (h *History) CustomUnmashaller(str string) error {
 	str = RetrieveAllPatchSelection(str)
 
 	str = ReplaceJournalSelection(str, "")
-
 	// Add the square brackets to complete the JSON string array format.
 	str = "[" + str + "]"
 
@@ -138,12 +142,10 @@ func (h *History) CustomUnmashaller(str string) error {
 		return fmt.Errorf("Unmarshalling Votes failed: %v", err)
 	}
 
-	*h = History{
-		Author:    author,
-		CommitSHA: commit,
-		Date:      date,
-		VotesInfo: v,
-	}
+	h.Author = author
+	h.CommitSHA = commit
+	h.Date = date
+	h.VotesInfo = v
 
 	return nil
 }
@@ -159,18 +161,18 @@ func SetProposalToken(token string) error {
 	return nil
 }
 
-// GetProposalToken returns the current proposal token value.
+// GetProposalToken returns the current proposal token value set.
 func GetProposalToken() string {
 	return proposalToken
 }
 
-// ClearProposalToken deletes the outdated proposal token value.
+// ClearProposalToken deletes the current proposal token value.
 func ClearProposalToken() {
 	proposalToken = ""
 }
 
 // SetJournalActionFormat sets journal (struct with the version and the journal
-// action) format to use for the regexp.
+// action) format to use in the regexp.
 func SetJournalActionFormat() {
 	f, err := json.Marshal(gitbe.JournalAction{
 		Version: `[[:digit:]]*`,

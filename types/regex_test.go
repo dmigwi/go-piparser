@@ -69,7 +69,7 @@ func TestRetrieveCMDAuthor(t *testing.T) {
 }
 
 func TestRetrieveCMDDate(t *testing.T) {
-	date, _ := time.Parse(cmdDateFormat, "Thu Feb 28 15:35:56 2019 -0600")
+	date, _ := time.Parse(CmdDateFormat, "Thu Feb 28 15:35:56 2019 -0600")
 	defaultTime := time.Time{}
 
 	td := []testData{

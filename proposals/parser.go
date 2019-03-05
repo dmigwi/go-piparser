@@ -2,9 +2,9 @@
 // License that can be found in the LICENSE file.
 
 // Package proposals holds the various methods and functions that facilitate
-// access to Politeia votes data that are cloned from github and accessed using
-// the git command line interface. Pre-Installation of the git cmd tool is a
-// pre-reqiusite for the effective functionality of this tool.
+// access to Politeia votes data cloned from github and accessed using
+// the git commandline interface. Pre-Installation of the git cmd tool is a
+// requirement for effective functionality use.
 package proposals
 
 import (
@@ -20,17 +20,17 @@ import (
 )
 
 const (
-	// gitCmd defines the prefix string of all command issued to the git command
-	// line interface.
+	// gitCmd defines the prefix string for all commands issued to the git
+	// commandline interface.
 	gitCmd = "git"
 
-	// listCommitsArg defines the git command line argument that lists the repo
+	// listCommitsArg defines the git commandline argument that lists the repo
 	// commit history in a chronoligical order. The oldest commit is listed as
 	// the last.
 	listCommitsArg = "log"
 
 	// commitPatchArg is an optional argument that is added to show the commit
-	// history with a patch(changes made) field included.
+	// history with a patch (changes made) field included.
 	commitPatchArg = "-p"
 
 	// cloneArg is the argument added between the git prefix command and the
@@ -50,15 +50,18 @@ const (
 	// 'origin' is the default set.
 	remoteURLRef = "origin"
 
-	// remoteURL sets the https protocol URL instead of git or ssh protocol. git
-	// protocol may be faster but it requires a dedicated port (9418) to be
+	// remoteURL uses the https protocol instead of git or ssh protocol. git
+	// protocol may be faster but requires a dedicated port (9418) to be
 	// open always. ssh requires authentication which is clearly not necessary
 	// in this case scenario. Find out more on the access protcols here:
 	// https://git-scm.com/book/en/v2/Git-on-the-Server-The-Protocols
 	remoteURL = "https://github.com/%s/%s.git"
+
+	// DirPrefix defines the temporary folder prefix.
+	DirPrefix = "go-piparser"
 )
 
-// Parser holds the clone rirectory, repo owner, repo name and last Update time.
+// Parser holds the clone directory, repo owner, repo name and last Update time.
 // This data is used to query politeia votes data via git commandline tool.
 type Parser struct {
 	cloneDir   string
@@ -67,37 +70,37 @@ type Parser struct {
 	lastUpdate time.Time
 }
 
-// Initializes and sets the one JournalActionFormat variables. JournalActionFormat
-// is a regex expression that helps eliminate unwanted parts of the vote data
-// pushed to github.
+// init sets the JournalActionFormat regex expression that helps eliminate
+// unwanted journal action votes data pushed to github.
 func init() {
 	types.SetJournalActionFormat()
 }
 
 // NewExplorer returns a Parser instance with a repoName, cloneDir and repoOwner
 // set. If the repoName and repoOwner provided are empty, the defaults are set.
-// If the cloneDir is not provided, a dir in the tmp folder is created and set.
+// If the cloneDir is not provided or an invalid path is provided, a dir in the
+// tmp folder is created and set.
 func NewExplorer(repoOwner, repo, rootCloneDir string) (*Parser, error) {
 	// Trim trailing and leading whitespaces
 	repo = strings.TrimSpace(repo)
 	repoOwner = strings.TrimSpace(repoOwner)
 	rootCloneDir = strings.TrimSpace(rootCloneDir)
 
-	// Set the default repo name if an empty values was passed.
+	// Set the default repo name if an empty value was passed.
 	if repo == "" {
 		repo = types.DefaultRepo
 	}
 
-	// Set the default repo owner if an empty values was passed.
+	// Set the default repo owner if an empty value was passed.
 	if repoOwner == "" {
 		repoOwner = types.DefaultRepoOwner
 	}
 
 	// If no directory was provided or the provided directory does not exist
-	// create a temporary folder.
+	// create a temp folder.
 	var err error
 	if _, err = os.Stat(rootCloneDir); os.IsNotExist(err) {
-		rootCloneDir, err = ioutil.TempDir("temp", "go-piparser")
+		rootCloneDir, err = ioutil.TempDir(os.TempDir(), DirPrefix)
 		if err != nil || rootCloneDir == "" {
 			return nil, fmt.Errorf("failed to create a temp cloning dir: %v", err)
 		}
@@ -111,11 +114,11 @@ func NewExplorer(repoOwner, repo, rootCloneDir string) (*Parser, error) {
 	return p, nil
 }
 
-// Proposal returns the all the commit history data associated with the provided
+// Proposal returns the all the commits history data associated with the provided
 // proposal token.
 func (p *Parser) Proposal(proposalToken string) (items []*types.History, err error) {
 	if err = types.SetProposalToken(proposalToken); err != nil {
-		// error returned, indicate that the proposal token was empty.
+		// error returned, indicates that the proposal token was empty.
 		return nil, err
 	}
 
@@ -136,19 +139,21 @@ func (p *Parser) Proposal(proposalToken string) (items []*types.History, err err
 	}
 
 	for _, entry := range data {
-		if len(entry) == 0 {
+		// strings.Split returns some split strings as empty or with just
+		// whitespaces and other special charactes. This happens when
+		// the seperating argument is the first in the source string or is
+		// surrounded by whitespaces and other special characters.
+		if len(strings.TrimSpace(entry)) == 0 {
 			continue
 		}
 
+		var h types.History
+
 		// entry string is not a valid JSON string format thus the use of a
 		// customized unmarshaller.
-		v2 := &types.History{}
-		err = v2.CustomUnmashaller(entry)
-		if err != nil {
-			return nil, fmt.Errorf("History.CustomUnmashaller failed: %v", err)
+		if err = types.CustomUnmashaller(&h, entry); err != nil {
+			return nil, fmt.Errorf("CustomUnmashaller failed: %v", err)
 		}
-
-		h := types.History(*v2)
 
 		// Do not store any empty votes data.
 		if len(h.VotesInfo) == 0 || h.Author == "" || h.CommitSHA == "" {
@@ -161,9 +166,10 @@ func (p *Parser) Proposal(proposalToken string) (items []*types.History, err err
 	return
 }
 
-// proposal queries the provided proposal data from the cloned repository using
-// the installed git command line interface. The single string of commit messages
-// is split into a slice of individual commit messages and returned.
+// proposal queries the provided proposal token's data from the cloned
+// repository using the installed git commandline interface. The single string
+// of commits message is split into a slice of individual commit messages and
+// returned.
 func (p *Parser) proposal(proposalToken string) ([]string, error) {
 	patchData, err := p.readCommandOutput(gitCmd, listCommitsArg,
 		commitPatchArg, proposalToken)
@@ -174,9 +180,9 @@ func (p *Parser) proposal(proposalToken string) ([]string, error) {
 	return strings.Split(patchData, "commit"), nil
 }
 
-// updateEnv ensures that a working git command line tool is installed in the
+// updateEnv ensures that a working git commandline tool is installed in the
 // underlying platform. It also checks if the required repo was cloned earlier.
-// If the repo was cloned earlier, the latest changes are pulled. If an error
+// If the repo was cloned earlier, the latest changes are pulled and if an error
 // occurs while pulling updates, the old repo version is dropped and a fresh
 // clone is made.
 func (p *Parser) updateEnv() error {
@@ -199,10 +205,8 @@ func (p *Parser) updateEnv() error {
 			return nil
 		}
 
-		// git pull changes command failed. Drop the old repo and trigger a full
-		// fresh repo clone.
-
-		// drop the old working directory version.
+		// git pull changes command failed.
+		// Drop the old repo and proceed with a full fresh repo clone.
 		if err = os.RemoveAll(workingDir); err != nil {
 			return err
 		}
