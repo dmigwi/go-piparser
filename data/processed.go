@@ -13,7 +13,7 @@ import (
 // votes data. The votes data returned contain a time.Time field obtained from
 // the individual commit messages. The go-piparser data output can be used to
 // do lots of things which include but not limited to ploting charts.
-// For charts: See the testclient.
+// For charts: See the testutil.
 
 var t, _ = time.Parse(types.CmdDateFormat, "Mon Nov 5 17:58:13 2018 +0000")
 

@@ -106,4 +106,4 @@ To install git visit [here](https://git-scm.com/book/en/v2/Getting-Started-Insta
 
 ## Test Client
 
-Find a complete test go-piparser implementation [here](https://github.com/dmigwi/go-piparser/tree/master/testclient) 
+Find a complete test go-piparser implementation [here](https://github.com/dmigwi/go-piparser/tree/master/testutil)

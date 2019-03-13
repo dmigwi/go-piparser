@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dmigwi/go-piparser/v1/types"
@@ -64,6 +65,7 @@ const (
 // Parser holds the clone directory, repo owner, repo name and last Update time.
 // This data is used to query politeia votes data via git commandline tool.
 type Parser struct {
+	sync.RWMutex
 	cloneDir   string
 	repoName   string
 	repoOwner  string
@@ -115,8 +117,11 @@ func NewExplorer(repoOwner, repo, rootCloneDir string) (*Parser, error) {
 }
 
 // Proposal returns the all the commits history data associated with the provided
-// proposal token.
+// proposal token. This method is thread-safe.
 func (p *Parser) Proposal(proposalToken string) (items []*types.History, err error) {
+	p.Lock()
+	defer p.Unlock()
+
 	if err = types.SetProposalToken(proposalToken); err != nil {
 		// error returned, indicates that the proposal token was empty.
 		return nil, err
