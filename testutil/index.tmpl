@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html>
+    <header>
+        <link rel="stylesheet" type="text/css" href="/static/css/charts.css">
+         <link rel="stylesheet" type="text/css" href="/static/css/searchbar.css">
+        <script type="text/javascript" src='/static/js/dygraph.min.js'></script>
+        <script type="text/javascript" src='/static/js/synchronizer.js'></script>
+    </header>
+    <body>
+        <div style='width:90%; margin:auto;'>
+            <div class="topnav">
+                <div class="wrap">
+                    <div class="search">
+                        <input
+                            type="text"
+                            id="s-input"
+                            class="searchTerm"
+                            placeholder="Search..."
+                        >
+                    </div>
+                </div>
+            </div>
+            <script>
+                var elem = document.getElementById("s-input")
+                elem.addEventListener("keyup", function(e) {
+                    if (event.keyCode === 13) {
+                        e.preventDefault()
+                        window.location.replace(elem.value)
+                    }
+                });
+            </script>
+            {{if .}}
+                {{if .ErrMsg}}
+                    <div style="margin:0 auto; width:40%">
+                        <h3>Try a different Proposal Token.</h3>
+                        <p><b>{{.Token}}</b> seems invalid.</p>
+                    </div>
+                {{else }}
+                    <div id='percent-of-votes' style='height:250px !important;'></div>
+                    <div id='cummulative' style='margin-top: 2%; height:250px !important;'></div>
+                    <div id='votes-by-time' style='margin-top: 2%; height:250px !important;'></div>
+                {{end}}
+             {{else}}
+                <div style="margin:0 auto; width:40%">
+                    <h3>Use a valid Proposal Token to fetch its data.</h3>
+                </div>
+            {{end}}
+        </div>
+
+        {{if and . (not .ErrMsg)}}
+        <script>
+           var common = {
+                labelsKMB: true,
+                legend: 'always',
+                fillGraph: true,
+                strokeWidth: 2,
+                gridLineColor: '#C4CBD2',
+                legendFormatter: legendFormatter
+            }
+
+            var percentConfig =  {
+                ...common,
+                title: 'Proposal Votes Charts',
+                labels: ['Date', 'Percent Yes'],
+                ylabel: 'Percentage Yes Votes (%)',
+                colors: ['#2971FF'],
+                labelsSeparateLines: true,
+                underlayCallback: function(canvas, area, g) {
+                    var xVals = g.xAxisExtremes();
+                    var xl = g.toDomCoords(xVals[0],60);
+                    var xr = g.toDomCoords(xVals[1],60);
+
+                    canvas.beginPath();
+                    canvas.strokeStyle = "#ED6D47";
+                    canvas.moveTo(xl[0],xl[1]);
+                    canvas.lineTo(xr[0],xr[1]);
+                    canvas.closePath();
+                    canvas.stroke();    
+                }
+            }
+
+            var cummulativeConfig = {
+                ...common,
+                labels: ['Date', 'Total Votes'],
+                ylabel: 'Cummulative Votes',
+                colors: ['#2971FF'],
+                underlayCallback: function(canvas, area, g) {
+                    var xVals = g.xAxisExtremes();
+                    var xl = g.toDomCoords(xVals[0],8269);
+                    var xr = g.toDomCoords(xVals[1],8269);
+
+                    canvas.beginPath();
+                    canvas.strokeStyle = "#ED6D47";
+                    canvas.moveTo(xl[0],xl[1]);
+                    canvas.lineTo(xr[0],xr[1]);
+                    canvas.closePath();
+                    canvas.stroke();    
+                }
+            }
+
+            var percentData = []
+            var cummulativeData = []
+            var hourlyVotesData = []
+
+            data = {{.Data}}
+
+            data.Yes = data.Yes.reverse()
+            data.No = data.No.reverse()
+            data.Date = data.Date.reverse()
+
+            var total = 0
+            var yes = 0
+
+            data.Date.map((n, i) => {
+                let formatedDate = new Date(n)
+                yes += data.Yes[i]
+                total += (data.No[i] + data.Yes[i])
+
+                let percent = ((yes*100)/total).toFixed(2);
+
+                percentData.push([formatedDate, parseFloat(percent)])
+                cummulativeData.push([formatedDate, total])
+                hourlyVotesData.push([formatedDate, data.Yes[i], data.No[i]*-1])
+            })
+
+            function legendFormatter(data) {
+                if (data.x == null) {
+                    // This happens when there's no selection and {legend: 'always'} is set.
+                    return '<br>' + data.series.map(function(series) { 
+                        return series.dashHTML + ' <span style="color:' +
+                        series.color + ';">' + series.labelHTML + ' </span>' }).join('<br>');
+                }
+
+                var html =  this.getLabels()[0] + ': ' + data.xHTML;
+                data.series.forEach(function(series, index) {
+                    if (!series.isVisible) return;
+
+                    var symbol = ''
+                    if (series.labelHTML.includes('Percent')) { 
+                         series.labelHTML = 'Yes';
+                        symbol = '%';
+                    } else if (index === 0) {
+                        html = '';
+                    }
+
+                    var labeledData = '<span style="color:' + 
+                        series.color + ';">' + series.labelHTML + ' </span> : ' +
+                         Math.abs(series.y);
+                    html += '<br> ' + series.dashHTML + ' ' + labeledData + '' + symbol;
+                });
+
+                return  html;
+                }
+
+            // Darken a color
+            function darkenColor(colorStr) {
+                // Defined in dygraph-utils.js
+                var color = Dygraph.toRGB_(colorStr);
+                color.r = Math.floor((255 + color.r) / 2);
+                color.g = Math.floor((255 + color.g) / 2);
+                color.b = Math.floor((255 + color.b) / 2);
+                return 'rgb(' + color.r + ',' + color.g + ',' + color.b + ')';
+            }
+
+            // Multiple column bar chart
+            function multiColumnBarPlotter(e) {
+                // We need to handle all the series simultaneously.
+                if (e.seriesIndex !== 0) return;
+
+                var g = e.dygraph;
+                var ctx = e.drawingContext;
+                var sets = e.allSeriesPoints;
+                var y_bottom = e.dygraph.toDomYCoord(0);
+
+                // Find the minimum separation between x-values.
+                // This determines the bar width.
+                var min_sep = Infinity;
+                for (var j = 0; j < sets.length; j++) {
+                    var points = sets[j];
+                    for (var i = 1; i < points.length; i++) {
+                    var sep = points[i].canvasx - points[i - 1].canvasx;
+                    if (sep < min_sep) min_sep = sep;
+                    }
+                }
+                var bar_width = Math.floor(2.0 / 3 * min_sep);
+
+                var fillColors = [];
+                var strokeColors = g.getColors();
+                for (var i = 0; i < strokeColors.length; i++) {
+                    fillColors.push(darkenColor(strokeColors[i]));
+                }
+
+                for (var j = 0; j < sets.length; j++) {
+                    ctx.fillStyle = fillColors[j];
+                    ctx.strokeStyle = strokeColors[j];
+                    for (var i = 0; i < sets[j].length; i++) {
+                    var p = sets[j][i];
+                    var center_x = p.canvasx;
+                    var x_left = center_x - (bar_width / 2) * (1 - j/(sets.length-1));
+
+                    ctx.fillRect(x_left, p.canvasy,
+                        bar_width/sets.length, y_bottom - p.canvasy);
+
+                    ctx.strokeRect(x_left, p.canvasy,
+                        bar_width/sets.length, y_bottom - p.canvasy);
+                    }
+                }
+            }
+
+             var hourlyVotesConfig = {
+                ...common,
+                plotter: multiColumnBarPlotter,
+                showRangeSelector: true,
+                labels: ['Date', 'Yes', 'No'],
+                ylabel: 'Votes Per Hourly Commit',
+                xlabel: 'Date Of Commits',
+                colors: ['#2DD8A3', '#ED6D47'],
+            }
+
+            window.onload = function() {
+                var gs = [
+                    new Dygraph(
+                        document.getElementById('percent-of-votes'),
+                        percentData,
+                        percentConfig
+                    ),
+                    new Dygraph(
+                        document.getElementById('cummulative'), 
+                        cummulativeData,
+                        cummulativeConfig
+                    ),
+                    new Dygraph(
+                        document.getElementById('votes-by-time'), 
+                        hourlyVotesData,
+                        hourlyVotesConfig
+                    )
+                ];
+
+                var sync = Dygraph.synchronize(gs);
+    
+                sync.detach();
+                sync = Dygraph.synchronize(gs, {
+                    zoom: true,
+                    range: false,
+                    selection: true
+                });
+            }
+        </script>
+        {{end}}
+    </body>
+</html>
+    
