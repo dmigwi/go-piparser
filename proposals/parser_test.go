@@ -53,7 +53,7 @@ func TestNewExplorer(t *testing.T) {
 		t.Run("Test_#"+strconv.Itoa(i), func(t *testing.T) {
 			p, err := NewExplorer(val.repoOwner, val.repo, val.dir)
 			if err != nil {
-				t.Fatalf("expected no error but the found: %v", err)
+				t.Fatalf("expected no error but found: %v", err)
 			}
 
 			var actualRepo, actualOwner = types.DefaultRepo, types.DefaultRepoOwner

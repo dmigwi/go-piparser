@@ -27,8 +27,8 @@ This is a http server that parses and serves data of the proposal token set on t
     cd go-piparser/testutil
 
     $ go build . && ./testutil
-    2019/03/05 11:44:09 Please Wait... Setting up the environment
-    2019/03/05 11:44:09 Serving on 127.0.0.1:8080
+    2019/03/05 11:44:09 Setting up the environment. Please Wait...
+    2019/03/05 11:44:19 Serving on http://127.0.0.1:8080
 
 ```
 
@@ -50,9 +50,7 @@ now access the URL `http://localhost:8080/27f87171d98b7923a1bd2bee6affed929fa2d2
 
 ### Charts will appear
 
-- The tool may take a couple of seconds to clone (if no repo existed before). Please wait ...
-
-- Consecutive proposal token queries are faster since data updates are done hourly.
+- The tool may take a couple of seconds. Please wait ...
 
 
 ![Screenshot from 2019-03-13 19-19-14](https://user-images.githubusercontent.com/22055953/54296360-d3745080-45c5-11e9-89d4-d903d5acc0fc.png)
