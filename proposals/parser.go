@@ -8,6 +8,7 @@
 package proposals
 
 import (
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -113,6 +114,11 @@ func NewExplorer(repoOwner, repo, rootCloneDir string) (*Parser, error) {
 		repoName:  repo,
 		repoOwner: repoOwner,
 		cloneDir:  rootCloneDir,
+	}
+
+	// If tests are running do not proceed further to clone the test git repos.
+	if flag.Lookup("test.v") != nil {
+		return p, nil
 	}
 
 	// For the first time, initiate git update outside the goroutine and on
