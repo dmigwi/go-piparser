@@ -5,7 +5,8 @@
 
 go-piparser is tool that parses [Politeia](https://proposals.decred.org) proposals votes data stored in github.
 It adds a timestamp field obtained from the commit history. The tool makes use of the git commandline interface to clone 
-and query the politeia votes data.
+and query the politeia votes data. Github repository updates are fetched at intervals of 1hr after setting up the
+environment. [doc](https://docs.decred.org/advanced/navigating-politeia-data/#voting-and-comment-data)
 
 
 ## Table of Contents

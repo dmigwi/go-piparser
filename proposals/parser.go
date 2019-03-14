@@ -10,6 +10,7 @@ package proposals
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -113,6 +114,27 @@ func NewExplorer(repoOwner, repo, rootCloneDir string) (*Parser, error) {
 		repoOwner: repoOwner,
 		cloneDir:  rootCloneDir,
 	}
+
+	// For the first time, initiate git update outside the goroutine and on
+	// consecutive times at intervals of 1hr fetch the updates in a goroutine.
+	if err := p.updateEnv(); err != nil {
+		return nil, fmt.Errorf("updateEnv failed: %v", err)
+	}
+
+	// This git updates fetch is run in goroutine but when the actual update is
+	// being made, fetching data via methods provided here is temporary halted.
+	go func() {
+		// Initiate a repo update at intervals of 1h. Politeia updates are made hourly.
+		// https://docs.decred.org/advanced/navigating-politeia-data/#voting-and-comment-data
+		timer := time.NewTimer(1 * time.Hour)
+		for range timer.C {
+			if err := p.updateEnv(); err != nil {
+				log.Fatalf("updateEnv failed: %v", err)
+				return
+			}
+		}
+	}()
+
 	return p, nil
 }
 
@@ -128,15 +150,6 @@ func (p *Parser) Proposal(proposalToken string) (items []*types.History, err err
 	}
 
 	defer types.ClearProposalToken()
-
-	// Initiate a repo update if the last time, the repo updates were fetched
-	// is more than an hour ago. Politeia updates are made hourly.
-	// https://docs.decred.org/advanced/navigating-politeia-data/#voting-and-comment-data
-	if time.Since(p.lastUpdate) > 1*time.Hour {
-		if err := p.updateEnv(); err != nil {
-			return nil, fmt.Errorf("updateEnv failed: %v", err)
-		}
-	}
 
 	data, err := p.proposal(proposalToken)
 	if err != nil {
@@ -191,6 +204,9 @@ func (p *Parser) proposal(proposalToken string) ([]string, error) {
 // occurs while pulling updates, the old repo version is dropped and a fresh
 // clone is made.
 func (p *Parser) updateEnv() error {
+	p.Lock()
+	defer p.Unlock()
+
 	// check if git exists by checking the git installation version.
 	err := p.execCommand(gitCmd, versionArg)
 	if err != nil {
