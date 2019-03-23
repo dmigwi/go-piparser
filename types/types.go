@@ -27,7 +27,7 @@ const (
 	DefaultVotesCommitMsg = "Flush vote journals"
 
 	// CmdDateFormat defines the date format of the time returned by git commandline
-	// interface.
+	// interface. Time format is known as RFC2822.
 	CmdDateFormat = "Mon Jan 2 15:04:05 2006 -0700"
 )
 
@@ -69,7 +69,6 @@ type bitCast string
 // vote bit cast.
 func (b *bitCast) UnmarshalJSON(d []byte) error {
 	// bitCast data mapping.
-	// TODO: source this data directly from github.
 	var data = map[bitCast]string{
 		`"1"`: "No",
 		`"2"`: "Yes",
@@ -109,7 +108,7 @@ func (v *Votes) UnmarshalJSON(b []byte) error {
 // CustomUnmashaller unmarshals the string argument passed. Its not in JSON
 // format. History unmarshalling happens ONLY for the set proposal token and
 // for none if otherwise (not set).
-func CustomUnmashaller(h *History, str string) error {
+func CustomUnmashaller(h *History, str string, since ...time.Time) error {
 	if isMatched := IsMatching(str, VotesJSONSignature()); !isMatched {
 		// Required string payload could not be matched.
 		return nil
@@ -128,6 +127,12 @@ func CustomUnmashaller(h *History, str string) error {
 	date, err := RetrieveCMDDate(str)
 	if err != nil {
 		return err // Missing Date
+	}
+
+	if len(since) > 0 && since[0] == date {
+		// It this date matches then the record being marshalled already exists.
+		// Ignore it.
+		return nil
 	}
 
 	str = RetrieveAllPatchSelection(str)

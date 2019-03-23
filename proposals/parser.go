@@ -62,6 +62,10 @@ const (
 
 	// DirPrefix defines the temporary folder prefix.
 	DirPrefix = "go-piparser"
+
+	// sinceArg with syntax "--since <date>" returns commits more recent than a
+	// specific date.
+	sinceArg = "--since"
 )
 
 // Parser holds the clone directory, repo owner, repo name and last Update time.
@@ -84,7 +88,7 @@ func init() {
 // set. If the repoName and repoOwner provided are empty, the defaults are set.
 // If the cloneDir is not provided or an invalid path is provided, a dir in the
 // tmp folder is created and set.
-func NewExplorer(repoOwner, repo, rootCloneDir string) (*Parser, error) {
+func NewExplorer(repoOwner, repo, rootCloneDir string, notificationHander func()) (*Parser, error) {
 	// Trim trailing and leading whitespaces
 	repo = strings.TrimSpace(repo)
 	repoOwner = strings.TrimSpace(repoOwner)
@@ -138,6 +142,10 @@ func NewExplorer(repoOwner, repo, rootCloneDir string) (*Parser, error) {
 				log.Fatalf("updateEnv failed: %v", err)
 				return
 			}
+
+			// notificationHander is invoked to trigger the process of retrieving
+			// the newly fetched updates.
+			notificationHander()
 		}
 	}()
 
@@ -146,21 +154,78 @@ func NewExplorer(repoOwner, repo, rootCloneDir string) (*Parser, error) {
 
 // Proposal returns the all the commits history data associated with the provided
 // proposal token. This method is thread-safe.
-func (p *Parser) Proposal(proposalToken string) (items []*types.History, err error) {
+func (p *Parser) Proposal(proposalToken string) ([]*types.History, error) {
 	p.Lock()
 	defer p.Unlock()
 
-	if err = types.SetProposalToken(proposalToken); err != nil {
+	if err := types.SetProposalToken(proposalToken); err != nil {
 		// error returned, indicates that the proposal token was empty.
 		return nil, err
 	}
 
+	return p.proposal(proposalToken)
+}
+
+// ProposalUpdate returns the commits history data associated with the provided
+// proposal token and was made after the since argument time provided. This
+// method is thread-safe.
+func (p *Parser) ProposalUpdate(proposalToken string, since time.Time) ([]*types.History, error) {
+	p.Lock()
+	defer p.Unlock()
+
+	if err := types.SetProposalToken(proposalToken); err != nil {
+		// error returned, indicates that the proposal token was empty.
+		return nil, err
+	}
+
+	return p.proposal(proposalToken, since)
+}
+
+// Proposals returns all the commit history data for the current proposal tokens
+// available.This method is thread-safe.
+func (p *Parser) Proposals() ([]*types.History, error) {
+	p.Lock()
+	defer p.Unlock()
+
+	return p.proposal("")
+}
+
+// ProposalsUpdate returns all the commit history for the current proposal tokens
+// since the provided date. This method is thread-safe.
+func (p *Parser) ProposalsUpdate(since time.Time) ([]*types.History, error) {
+	p.Lock()
+	defer p.Unlock()
+
+	return p.proposal("", since)
+}
+
+// proposal queries and parses the provided proposal token's data from the
+// cloned repository using the installed git command line interface tool. If
+// the optional since time argument is provided, only the proposal history returned
+// created after the since time is returned.
+func (p *Parser) proposal(proposalToken string,
+	since ...time.Time) (items []*types.History, err error) {
+
 	defer types.ClearProposalToken()
 
-	data, err := p.proposal(proposalToken)
-	if err != nil {
-		return nil, fmt.Errorf("fetching proposal failed: %v", err)
+	var t time.Time
+	var args []string
+
+	// construct the arguments.
+	if len(since) > 0 && since[0] != t {
+		args = []string{listCommitsArg, commitPatchArg, proposalToken,
+			sinceArg, since[0].Format(types.CmdDateFormat)}
+	} else {
+		args = []string{listCommitsArg, commitPatchArg, proposalToken}
 	}
+
+	// Fetch the data via git cmd.
+	patchData, err := p.readCommandOutput(gitCmd, args...)
+	if err != nil {
+		return nil, fmt.Errorf("fetching proposal history failed: %v", err)
+	}
+
+	data := strings.Split(patchData, "commit")
 
 	for _, entry := range data {
 		// strings.Split returns some split strings as empty or with just
@@ -175,7 +240,7 @@ func (p *Parser) Proposal(proposalToken string) (items []*types.History, err err
 
 		// entry string is not a valid JSON string format thus the use of a
 		// customized unmarshaller.
-		if err = types.CustomUnmashaller(&h, entry); err != nil {
+		if err = types.CustomUnmashaller(&h, entry, since...); err != nil {
 			return nil, fmt.Errorf("CustomUnmashaller failed: %v", err)
 		}
 
@@ -188,20 +253,6 @@ func (p *Parser) Proposal(proposalToken string) (items []*types.History, err err
 	}
 
 	return
-}
-
-// proposal queries the provided proposal token's data from the cloned
-// repository using the installed git commandline interface. The single string
-// of commits message is split into a slice of individual commit messages and
-// returned.
-func (p *Parser) proposal(proposalToken string) ([]string, error) {
-	patchData, err := p.readCommandOutput(gitCmd, listCommitsArg,
-		commitPatchArg, proposalToken)
-	if err != nil {
-		return nil, fmt.Errorf("fetching proposal history failed: %v", err)
-	}
-
-	return strings.Split(patchData, "commit"), nil
 }
 
 // updateEnv ensures that a working git commandline tool is installed in the

@@ -49,14 +49,21 @@ var (
 		return PiRegExp(journalSelection() + `.*`)
 	}
 
-	// VotesJSONSignature defines a part of the json string signature that
-	// matches the commit patch string required. The matched commit patch string
-	// contains the needed votes data.
-	VotesJSONSignature = func() string {
-		return fmt.Sprintf(`{"castvote":{"token":"%s",`,
-			proposalToken)
-	}
+	// anyTokenSelection matches any proposal token. A proposal token is
+	// defined by 64 alphanumeric characters which can be upper case or lower
+	// case of any letter exclusive of punctuations and white space characters.
+	anyTokenSelection PiRegExp = `[A-z0-9]{64}`
 )
+
+// VotesJSONSignature defines a part of the json string signature that matches
+// the commit patch string required. The matched commit patch string contains
+// the needed votes data.
+func VotesJSONSignature() string {
+	if proposalToken == "" {
+		return fmt.Sprintf(`{"castvote":{"token":"%s",`, anyTokenSelection)
+	}
+	return fmt.Sprintf(`{"castvote":{"token":"%s",`, proposalToken)
+}
 
 // exp compiles the PiRegExp regex expression type.
 func (e PiRegExp) exp() *regexp.Regexp { return regexp.MustCompile(string(e)) }
