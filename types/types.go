@@ -42,6 +42,7 @@ type History struct {
 	Author    string
 	CommitSHA string
 	Date      time.Time
+	Token     string
 	VotesInfo Votes
 }
 
@@ -114,6 +115,11 @@ func CustomUnmashaller(h *History, str string, since ...time.Time) error {
 		return nil
 	}
 
+	proposalToken, err := RetrieveProposalToken(str)
+	if err != nil {
+		return err // Missing proposal token
+	}
+
 	commit, err := RetrieveCMDCommit(str)
 	if err != nil {
 		return err // Missing commit SHA
@@ -150,6 +156,7 @@ func CustomUnmashaller(h *History, str string, since ...time.Time) error {
 	h.Author = author
 	h.CommitSHA = commit
 	h.Date = date
+	h.Token = proposalToken
 	h.VotesInfo = v
 
 	return nil

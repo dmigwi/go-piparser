@@ -52,7 +52,7 @@ var (
 	// anyTokenSelection matches any proposal token. A proposal token is
 	// defined by 64 alphanumeric characters which can be upper case or lower
 	// case of any letter exclusive of punctuations and white space characters.
-	anyTokenSelection PiRegExp = `[A-z0-9]{64}`
+	anyTokenSelection = `[A-z0-9]{64}`
 )
 
 // VotesJSONSignature defines a part of the json string signature that matches
@@ -111,6 +111,19 @@ func ReplaceJournalSelection(parent, with string) string {
 func RetrieveAllPatchSelection(parent string) string {
 	matches := patchSelection().exp().FindAllString(parent, -1)
 	return strings.Join(matches, ",")
+}
+
+// RetrieveProposalToken uses the anyTokenSelection regex to build a complete
+// regex expression to select the proposal token from the Journal selection
+// text.
+func RetrieveProposalToken(parent string) (string, error) {
+	regex := fmt.Sprintf(`"token":"(%s)`, anyTokenSelection)
+	data := PiRegExp(regex).exp().FindStringSubmatch(parent)
+	if len(data) > 1 && data[1] != "" {
+		return data[1], nil
+	}
+
+	return "", fmt.Errorf("missing token from the parsed string")
 }
 
 // IsMatching returns boolean true if the matchRegex can be matched in the parent
