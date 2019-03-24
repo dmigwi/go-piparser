@@ -6,7 +6,9 @@
 go-piparser is tool that parses [Politeia](https://proposals.decred.org) proposals votes data stored in github.
 It adds a timestamp field obtained from the commit history. The tool makes use of the git commandline interface to clone 
 and query the politeia votes data. Github repository updates are fetched at intervals of 1hr after setting up the
-environment. [doc](https://docs.decred.org/advanced/navigating-politeia-data/#voting-and-comment-data)
+environment. [politeia doc](https://docs.decred.org/advanced/navigating-politeia-data/#voting-and-comment-data)
+
+Check out the full doc at [godoc.org](https://godoc.org/github.com/dmigwi/go-piparser/proposals) or code navigation on [sourcegraph.com](https://sourcegraph.com/github.com/dmigwi/go-piparser/-/blob/proposals/parser.go)
 
 
 ## Table of Contents
@@ -44,7 +46,13 @@ To install git visit [here](https://git-scm.com/book/en/v2/Getting-Started-Insta
     repoName  := ""
     cloneDir  := "/path/to/root/clone/directory"
 
-    parser, err := proposals.NewExplorer(repoOwner, repoName, cloneDir)
+    handler := func() {
+		// Invoked hourly to trigger retrieval of the newly fetched updates.
+		// Fetch the new Updates by including the timestamp when the last
+		// update was queried for given proposal token.
+	}
+
+    parser, err := proposals.NewExplorer(repoOwner, repoName, cloneDir, handler)
     if err != nil {
 		log.Fatalf("unexpected error occured: %v", err)
     }
@@ -53,7 +61,7 @@ To install git visit [here](https://git-scm.com/book/en/v2/Getting-Started-Insta
 - `repoOwner` - defines the owner of the repository where the Politeia votes are to be queries from. If not set, it defaults to `decred-proposals`
 - `repoName` - defines the name of the repository holding the Politeia votes. If not set, it defaults to `mainnet`.
 - `cloneDir` - defines the directory where the said repository will be cloned into. If not set, a tmp folder is created and set.
-
+- `handler` - defines the function that is invoked to trigger the client updates fetch immediately after the parser tool retrieves them.
 ## Fetch the Proposal's Votes
 
 ```go
@@ -84,14 +92,21 @@ To install git visit [here](https://git-scm.com/book/en/v2/Getting-Started-Insta
     func main() {
         cloneDir := "/path/to/root/clone/directory"
 
+         // Set the Proposal token
+        proposalToken := "60adb9c0946482492889e85e9bce05c309665b3438dd85cb1a837df31fbf57fb"
+
+        // notifyChan will signal when updates are available.
+        notifyChan := make(chan struct{})
+
+        handler := func() {
+            notifyChan <- struct{}{}
+        }
+
         // Create a new Explorer
-        parser, err := proposals.NewExplorer("", "", cloneDir)
+        parser, err := proposals.NewExplorer("", "", cloneDir, handler)
         if err != nil {
             log.Fatalf("unexpected error occured: %v", err)
         }
-
-        // Set the Proposal token
-        proposalToken := "60adb9c0946482492889e85e9bce05c309665b3438dd85cb1a837df31fbf57fb"
 
         // Retrieve the proposal token's votes data.
         data, err := parser.Proposal(proposalToken)
@@ -99,8 +114,20 @@ To install git visit [here](https://git-scm.com/book/en/v2/Getting-Started-Insta
             log.Fatalf("unexpected error occured: %v", err)
         }
 
-
         ...
+
+        // Retrieve proposal updates after they happen.
+        for range notifyChan {
+            // set the since time value
+            since := time.Parse(time.RFC3339,"2019-03-05T00:59:18Z")
+
+            data, err = parser.ProposalUpdate(proposalToken, since)
+            if err != nil {
+                log.Fatalf("unexpected error occured: %v", err)
+            }
+
+            ...
+        }
     }
 
 ```

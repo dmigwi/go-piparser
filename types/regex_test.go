@@ -1,17 +1,10 @@
 package types
 
 import (
-	"os"
 	"strconv"
 	"testing"
 	"time"
 )
-
-func TestMain(m *testing.M) {
-	SetJournalActionFormat()
-
-	os.Exit(m.Run())
-}
 
 // testData defines the general struct with possible inputs and outputs that can
 // be used to test the various regex expressions.
@@ -276,6 +269,100 @@ func TestIsMatching(t *testing.T) {
 			if result != val.isFound {
 				t.Fatalf("expected the matching src to the regex to be %v but found %v",
 					val.isFound, result)
+			}
+		})
+	}
+}
+
+// TestVotesJSONSignature tests the strings that can be matched with
+// VotesJSONSignature output.
+func TestVotesJSONSignature(t *testing.T) {
+	testString1 := `{"version":"1","action":"add"}{"castvote":{"token":"a3def199af812b796887f4eae22e11e45f112b50c2e17252c60ed190933ec14f","ticket":"03d4f5888a0a7bf983852b379de539acf8eff272534cf2be6846ac55eaae878b","votebit":"1","signature":"1f06c29926a871a501f91fd0bca0b68b2d12226c582f0277b4be59eb48454b8e894824c4a02ec312b87245d285a99f835492dd766bfd34d9d32222a6f03c60a413"},"receipt":"7e0f760157cf8d3cb7bfe76e4c76aaf41a6571dc4a9519d603be30986fb36028203cf21c9e81e2819adaa3660b4195a0868daf068c5a39f7949f822b53977f05"}`
+
+	testString2 := `{"version":"1","action":"add"}{"castvote":{"token":"27f87171d98b7923a1bd2bee6affed929fa2d2a6e178b5c80a9971a92a5c7f50","ticket":"03d4f5888a0a7bf983852b379de539acf8eff272534cf2be6846ac55eaae878b","votebit":"1","signature":"1f06c29926a871a501f91fd0bca0b68b2d12226c582f0277b4be59eb48454b8e894824c4a02ec312b87245d285a99f835492dd766bfd34d9d32222a6f03c60a413"},"receipt":"7e0f760157cf8d3cb7bfe76e4c76aaf41a6571dc4a9519d603be30986fb36028203cf21c9e81e2819adaa3660b4195a0868daf068c5a39f7949f822b53977f05"}`
+
+	// invalid proposal vote data.
+	testString3 := `{"version":"1","action":"add"}{"castvote":{"token":"27f87171d98b7923a1bd2bee6affed929fa2d26e178b5c80a9971a92a5c7f50","ticket":"03d4f5888a0a7bf983852b379de539acf8eff272534cf2be6846ac55eaae878b","votebit":"1","signature":"1f06c29926a871a501f91fd0bca0b68b2d12226c582f0277b4be59eb48454b8e894824c4a02ec312b87245d285a99f835492dd766bfd34d9d32222a6f03c60a413"},"receipt":"7e0f760157cf8d3cb7bfe76e4c76aaf41a6571dc4a9519d603be30986fb36028203cf21c9e81e2819adaa3660b4195a0868daf068c5a39f7949f822b53977f05"}`
+
+	// invalid proposal vote data.
+	testString4 := `{"version":"1","action":"add"}{"castvote":{"token":"27f87171d98b7923a1bd2bee6affed929 fa2d26e178b5c80a9971a92a5c7f50","ticket":"03d4f5888a0a7bf983852b379de539acf8eff272534cf2be6846ac55eaae878b","votebit":"1","signature":"1f06c29926a871a501f91fd0bca0b68b2d12226c582f0277b4be59eb48454b8e894824c4a02ec312b87245d285a99f835492dd766bfd34d9d32222a6f03c60a413"},"receipt":"7e0f760157cf8d3cb7bfe76e4c76aaf41a6571dc4a9519d603be30986fb36028203cf21c9e81e2819adaa3660b4195a0868daf068c5a39f7949f822b53977f05"}`
+
+	defaultToken := "27f87171d98b7923a1bd2bee6affed929fa2d2a6e178b5c80a9971a92a5c7f50"
+
+	type testData struct {
+		src, token string
+		isMatched  bool
+	}
+
+	td := []testData{
+		{src: testString1, token: "", isMatched: true}, // Any token matched
+		{src: testString1, token: defaultToken, isMatched: false},
+		{src: testString2, token: "", isMatched: true},           // Any token matched
+		{src: testString2, token: defaultToken, isMatched: true}, // only defaultToken matched
+		{src: testString3, token: "", isMatched: false},
+		{src: testString3, token: defaultToken, isMatched: false},
+		{src: testString4, token: "", isMatched: false},
+		{src: testString4, token: defaultToken, isMatched: false},
+	}
+
+	for i, val := range td {
+		t.Run("Test_#"+strconv.Itoa(i), func(t *testing.T) {
+			if len(val.token) > 0 {
+				// set proposal token if it exists.
+				SetProposalToken(val.token)
+			} else {
+				// drop previous set proposal value.
+				ClearProposalToken()
+			}
+
+			result := IsMatching(val.src, VotesJSONSignature())
+			if result != val.isMatched {
+				t.Fatalf("expected the matching src to the regex to be %v but found %v",
+					val.isMatched, result)
+			}
+		})
+	}
+}
+
+func TestRetrieveProposalToken(t *testing.T) {
+	testString1 := `{"version":"1","action":"add"}{"castvote":{"token":"a3def199af812b796887f4eae22e11e45f112b50c2e17252c60ed190933ec14f","ticket":"03d4f5888a0a7bf983852b379de539acf8eff272534cf2be6846ac55eaae878b","votebit":"1","signature":"1f06c29926a871a501f91fd0bca0b68b2d12226c582f0277b4be59eb48454b8e894824c4a02ec312b87245d285a99f835492dd766bfd34d9d32222a6f03c60a413"},"receipt":"7e0f760157cf8d3cb7bfe76e4c76aaf41a6571dc4a9519d603be30986fb36028203cf21c9e81e2819adaa3660b4195a0868daf068c5a39f7949f822b53977f05"}`
+
+	testString2 := `{"version":"1","action":"add"}{"castvote":{"token":"27f87171d98b7923a1bd2bee6affed929fa2d2a6e178b5c80a9971a92a5c7f50","ticket":"03d4f5888a0a7bf983852b379de539acf8eff272534cf2be6846ac55eaae878b","votebit":"1","signature":"1f06c29926a871a501f91fd0bca0b68b2d12226c582f0277b4be59eb48454b8e894824c4a02ec312b87245d285a99f835492dd766bfd34d9d32222a6f03c60a413"},"receipt":"7e0f760157cf8d3cb7bfe76e4c76aaf41a6571dc4a9519d603be30986fb36028203cf21c9e81e2819adaa3660b4195a0868daf068c5a39f7949f822b53977f05"}`
+
+	// invalid proposal vote data.
+	testString3 := `{"version":"1","action":"add"}{"castvote":{"token":"27f87171d98b7923a1bd2bee6affed929fa2d26e178b5c80a9971a92a5c7f50","ticket":"03d4f5888a0a7bf983852b379de539acf8eff272534cf2be6846ac55eaae878b","votebit":"1","signature":"1f06c29926a871a501f91fd0bca0b68b2d12226c582f0277b4be59eb48454b8e894824c4a02ec312b87245d285a99f835492dd766bfd34d9d32222a6f03c60a413"},"receipt":"7e0f760157cf8d3cb7bfe76e4c76aaf41a6571dc4a9519d603be30986fb36028203cf21c9e81e2819adaa3660b4195a0868daf068c5a39f7949f822b53977f05"}`
+
+	// invalid proposal vote data.
+	testString4 := `{"version":"1","action":"add"}{"castvote":{"token":"27f87171d98b7923a1bd2bee6affed929 fa2d26e178b5c80a9971a92a5c7f50","ticket":"03d4f5888a0a7bf983852b379de539acf8eff272534cf2be6846ac55eaae878b","votebit":"1","signature":"1f06c29926a871a501f91fd0bca0b68b2d12226c582f0277b4be59eb48454b8e894824c4a02ec312b87245d285a99f835492dd766bfd34d9d32222a6f03c60a413"},"receipt":"7e0f760157cf8d3cb7bfe76e4c76aaf41a6571dc4a9519d603be30986fb36028203cf21c9e81e2819adaa3660b4195a0868daf068c5a39f7949f822b53977f05"}`
+
+	token1 := "27f87171d98b7923a1bd2bee6affed929fa2d2a6e178b5c80a9971a92a5c7f50"
+	token2 := "a3def199af812b796887f4eae22e11e45f112b50c2e17252c60ed190933ec14f"
+
+	type testData struct {
+		src, token string
+		isError    bool
+	}
+
+	td := []testData{
+		{src: testString1, token: token2, isError: false},
+		{src: testString2, token: token1, isError: false},
+		{src: testString3, token: "", isError: true},
+		{src: testString4, token: "", isError: true},
+	}
+
+	for i, val := range td {
+		t.Run("Test_#"+strconv.Itoa(i), func(t *testing.T) {
+			resp, err := RetrieveProposalToken(val.src)
+			if err != nil && !val.isError {
+				t.Fatalf("expected no error but found: %v", err)
+			}
+
+			if err == nil && val.isError {
+				t.Fatal("expected an error but found none")
+			}
+
+			if val.token != resp {
+				t.Fatalf("expected the returned value (%s) to be equal to (%s) but it wasn't", resp, val.token)
 			}
 		})
 	}

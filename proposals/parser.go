@@ -24,12 +24,12 @@ import (
 
 const (
 	// gitCmd defines the prefix string for all commands issued to the git
-	// commandline interface.
+	// command line interface.
 	gitCmd = "git"
 
-	// listCommitsArg defines the git commandline argument that lists the repo
-	// commit history in a chronoligical order. The oldest commit is listed as
-	// the last.
+	// listCommitsArg defines the git command line argument that lists the repo
+	// commit history in a reverse chronoligical order. The oldest commit is
+	// listed as the last.
 	listCommitsArg = "log"
 
 	// commitPatchArg is an optional argument that is added to show the commit
@@ -46,7 +46,7 @@ const (
 	versionArg = "--version"
 
 	// pullChangesArg is an argument that helps pull latest changes from the
-	// remote repository set.
+	// remote repository set. git pull = git fetch + git merge.
 	pullChangesArg = "pull"
 
 	// remoteURLRef references the remote URL used to clone the repository.
@@ -62,29 +62,34 @@ const (
 
 	// DirPrefix defines the temporary folder prefix.
 	DirPrefix = "go-piparser"
+
+	// sinceArg with syntax "--since <date>" returns commits more recent than a
+	// specific date.
+	sinceArg = "--since"
+
+	// By default, the commits are shown in reverse chronological order. Using
+	// the reverse order argument ensures that all commits returned are listed
+	// in chronological order.
+	reverseOrder = "--reverse"
 )
 
-// Parser holds the clone directory, repo owner, repo name and last Update time.
-// This data is used to query politeia votes data via git commandline tool.
+// Parser holds the clone directory, repo owner and repo name. This data is
+// used to query politeia data via git command line tool.
 type Parser struct {
 	sync.RWMutex
-	cloneDir   string
-	repoName   string
-	repoOwner  string
-	lastUpdate time.Time
+	cloneDir  string
+	repoName  string
+	repoOwner string
 }
 
-// init sets the JournalActionFormat regex expression that helps eliminate
-// unwanted journal action votes data pushed to github.
-func init() {
-	types.SetJournalActionFormat()
-}
-
-// NewExplorer returns a Parser instance with a repoName, cloneDir and repoOwner
+// NewExplorer returns a Parser instance with repoName, cloneDir and repoOwner
 // set. If the repoName and repoOwner provided are empty, the defaults are set.
 // If the cloneDir is not provided or an invalid path is provided, a dir in the
-// tmp folder is created and set.
-func NewExplorer(repoOwner, repo, rootCloneDir string) (*Parser, error) {
+// tmp folder is created and set. It also sets ups the environment by cloning
+// the repo if it doesn't exist or fetches the latest updates if it does. It
+// initiates an asynchronous fetch of hourly politiea updates and there after
+// triggers the client to fetch the new updates via the notificationHander function.
+func NewExplorer(repoOwner, repo, rootCloneDir string, notificationHander func()) (*Parser, error) {
 	// Trim trailing and leading whitespaces
 	repo = strings.TrimSpace(repo)
 	repoOwner = strings.TrimSpace(repoOwner)
@@ -127,8 +132,7 @@ func NewExplorer(repoOwner, repo, rootCloneDir string) (*Parser, error) {
 		return nil, fmt.Errorf("updateEnv failed: %v", err)
 	}
 
-	// This git updates fetch is run in goroutine but when the actual update is
-	// being made, fetching data via methods provided here is temporary halted.
+	// This git updates fetch is made asynchronous.
 	go func() {
 		// Initiate a repo update at intervals of 1h. Politeia updates are made hourly.
 		// https://docs.decred.org/advanced/navigating-politeia-data/#voting-and-comment-data
@@ -138,6 +142,10 @@ func NewExplorer(repoOwner, repo, rootCloneDir string) (*Parser, error) {
 				log.Fatalf("updateEnv failed: %v", err)
 				return
 			}
+
+			// notificationHander is invoked to trigger the process of
+			// retrieving the newly fetched updates.
+			notificationHander()
 		}
 	}()
 
@@ -146,21 +154,75 @@ func NewExplorer(repoOwner, repo, rootCloneDir string) (*Parser, error) {
 
 // Proposal returns the all the commits history data associated with the provided
 // proposal token. This method is thread-safe.
-func (p *Parser) Proposal(proposalToken string) (items []*types.History, err error) {
+func (p *Parser) Proposal(proposalToken string) ([]*types.History, error) {
 	p.Lock()
 	defer p.Unlock()
 
-	if err = types.SetProposalToken(proposalToken); err != nil {
+	if err := types.SetProposalToken(proposalToken); err != nil {
 		// error returned, indicates that the proposal token was empty.
 		return nil, err
 	}
 
+	return p.proposal(proposalToken)
+}
+
+// ProposalUpdate returns the commits history data associated with the provided
+// proposal token and was made after the since argument time provided. This
+// method is thread-safe.
+func (p *Parser) ProposalUpdate(proposalToken string, since time.Time) ([]*types.History, error) {
+	p.Lock()
+	defer p.Unlock()
+
+	if err := types.SetProposalToken(proposalToken); err != nil {
+		// error returned, indicates that the proposal token was empty.
+		return nil, err
+	}
+
+	return p.proposal(proposalToken, since)
+}
+
+// Proposals returns all the commits history data for the current proposal tokens
+// available. This method is thread-safe.
+func (p *Parser) Proposals() ([]*types.History, error) {
+	p.Lock()
+	defer p.Unlock()
+
+	return p.proposal("")
+}
+
+// ProposalsUpdate returns all the commits history updates for the current
+// proposal tokens available since the provided date. This method is thread-safe.
+func (p *Parser) ProposalsUpdate(since time.Time) ([]*types.History, error) {
+	p.Lock()
+	defer p.Unlock()
+
+	return p.proposal("", since)
+}
+
+// proposal queries and parses the provided proposal token(s) data from the
+// cloned repository using the installed git command line interface tool. If
+// the optional since time argument is provided, only the proposal(s) history
+// returned was created after the since time.
+func (p *Parser) proposal(proposalToken string,
+	since ...time.Time) (items []*types.History, err error) {
+
 	defer types.ClearProposalToken()
 
-	data, err := p.proposal(proposalToken)
-	if err != nil {
-		return nil, fmt.Errorf("fetching proposal failed: %v", err)
+	var t time.Time
+	args := []string{listCommitsArg, reverseOrder, commitPatchArg, proposalToken}
+
+	// Append the time limiting arguments.
+	if len(since) > 0 && since[0] != t {
+		args = append(args, []string{sinceArg, since[0].Format(types.CmdDateFormat)}...)
 	}
+
+	// Fetch the data via git cmd.
+	patchData, err := p.readCommandOutput(gitCmd, args...)
+	if err != nil {
+		return nil, fmt.Errorf("fetching proposal(s) history failed: %v", err)
+	}
+
+	data := strings.Split(patchData, "commit")
 
 	for _, entry := range data {
 		// strings.Split returns some split strings as empty or with just
@@ -175,7 +237,7 @@ func (p *Parser) Proposal(proposalToken string) (items []*types.History, err err
 
 		// entry string is not a valid JSON string format thus the use of a
 		// customized unmarshaller.
-		if err = types.CustomUnmashaller(&h, entry); err != nil {
+		if err = types.CustomUnmashaller(&h, entry, since...); err != nil {
 			return nil, fmt.Errorf("CustomUnmashaller failed: %v", err)
 		}
 
@@ -188,20 +250,6 @@ func (p *Parser) Proposal(proposalToken string) (items []*types.History, err err
 	}
 
 	return
-}
-
-// proposal queries the provided proposal token's data from the cloned
-// repository using the installed git commandline interface. The single string
-// of commits message is split into a slice of individual commit messages and
-// returned.
-func (p *Parser) proposal(proposalToken string) ([]string, error) {
-	patchData, err := p.readCommandOutput(gitCmd, listCommitsArg,
-		commitPatchArg, proposalToken)
-	if err != nil {
-		return nil, fmt.Errorf("fetching proposal history failed: %v", err)
-	}
-
-	return strings.Split(patchData, "commit"), nil
 }
 
 // updateEnv ensures that a working git commandline tool is installed in the
@@ -228,12 +276,11 @@ func (p *Parser) updateEnv() error {
 	case !os.IsNotExist(err):
 		// The working directory was found thus initiate the updates fetch process.
 		if err := p.execCommand(gitCmd, pullChangesArg, remoteURLRef); err == nil {
-			p.lastUpdate = time.Now()
 			return nil
 		}
 
-		// git pull changes command failed.
-		// Drop the old repo and proceed with a full fresh repo clone.
+		// git pull command failed.
+		// Drop the old repo and proceed to clone the repo a fresh.
 		if err = os.RemoveAll(workingDir); err != nil {
 			return err
 		}
@@ -251,8 +298,6 @@ func (p *Parser) updateEnv() error {
 		}
 	}
 
-	p.lastUpdate = time.Now()
-
 	return nil
 }
 
@@ -265,7 +310,7 @@ func (p *Parser) readCommandOutput(cmdName string, args ...string) (string, erro
 
 	stdOutput, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", err
+		return "", formatError(cmdName, args, err)
 	}
 
 	return string(stdOutput), nil
@@ -278,7 +323,9 @@ func (p *Parser) execCommand(cmdName string, args ...string) error {
 		return err
 	}
 
-	return cmd.Run()
+	err = cmd.Run()
+
+	return formatError(cmdName, args, err)
 }
 
 // processCommand checks if an empty command prefix was provided. It also sets the
@@ -303,4 +350,13 @@ func (p *Parser) workingDir() string {
 		dir = p.cloneDir
 	}
 	return dir
+}
+
+// formatError replaces "exit status 128" with "git args... failed to execute."
+func formatError(cmd string, args []string, err error) error {
+	if err == nil {
+		return err
+	}
+	str := fmt.Sprintf("%s command with %v failed to execute", cmd, args)
+	return fmt.Errorf(types.ReplaceAny(err.Error(), "exit status 128", str))
 }
