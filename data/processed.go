@@ -6,7 +6,7 @@ package data
 import (
 	"time"
 
-	"github.com/dmigwi/go-piparser/v1/types"
+	"github.com/dmigwi/go-piparser/proposals/types"
 )
 
 // go-piparser parses the politeia's github stored data to primarily fetch the
