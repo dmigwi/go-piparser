@@ -98,7 +98,7 @@ To install git visit [here](https://git-scm.com/book/en/v2/Getting-Started-Insta
         // notifyChan will signal when updates are available.
         notifyChan := make(chan struct{})
 
-        handler = func() {
+        handler := func() {
             notifyChan <- struct{}{}
         }
 

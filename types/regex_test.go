@@ -1,17 +1,10 @@
 package types
 
 import (
-	"os"
 	"strconv"
 	"testing"
 	"time"
 )
-
-func TestMain(m *testing.M) {
-	SetJournalActionFormat()
-
-	os.Exit(m.Run())
-}
 
 // testData defines the general struct with possible inputs and outputs that can
 // be used to test the various regex expressions.

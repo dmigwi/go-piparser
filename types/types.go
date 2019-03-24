@@ -9,8 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
-
-	"github.com/decred/politeia/politeiad/backend/gitbe"
 )
 
 const (
@@ -29,9 +27,13 @@ const (
 	// CmdDateFormat defines the date format of the time returned by git commandline
 	// interface. Time format is known as RFC2822.
 	CmdDateFormat = "Mon Jan 2 15:04:05 2006 -0700"
+
+	// journalActionFormat is the format of the journal action struct appended
+	// to all votes. Its a struct with the version and the journal action.
+	journalActionFormat = `{"version":"[[:digit:]]*","action":"(add)?(del)?(addlike)?"}`
 )
 
-var journalActionFormat, proposalToken string
+var proposalToken string
 
 // Confirm that Votes implements the unmarshalling interface.
 var _ json.Unmarshaler = (*Votes)(nil)
@@ -181,18 +183,4 @@ func GetProposalToken() string {
 // ClearProposalToken deletes the current proposal token value.
 func ClearProposalToken() {
 	proposalToken = ""
-}
-
-// SetJournalActionFormat sets journal (struct with the version and the journal
-// action) format to use in the regexp.
-func SetJournalActionFormat() {
-	f, err := json.Marshal(gitbe.JournalAction{
-		Version: `[[:digit:]]*`,
-		Action:  "(add)?(del)?(addlike)?",
-	})
-	if err != nil {
-		panic(err)
-	}
-
-	journalActionFormat = string(f)
 }

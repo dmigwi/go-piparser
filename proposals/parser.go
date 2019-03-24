@@ -82,12 +82,6 @@ type Parser struct {
 	repoOwner string
 }
 
-// init sets the JournalActionFormat regex expression that helps eliminate
-// unwanted journal action votes data pushed to github.
-func init() {
-	types.SetJournalActionFormat()
-}
-
 // NewExplorer returns a Parser instance with repoName, cloneDir and repoOwner
 // set. If the repoName and repoOwner provided are empty, the defaults are set.
 // If the cloneDir is not provided or an invalid path is provided, a dir in the

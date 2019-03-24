@@ -19,7 +19,6 @@ func TestUnmarshalSingleTokenHistory(t *testing.T) {
 	currentProposalToken := "27f87171d98b7923a1bd2bee6affed929fa2d2a6e178b5c80a9971a92a5c7f50"
 
 	types.SetProposalToken(currentProposalToken)
-	types.SetJournalActionFormat()
 
 	var hist []*types.History
 	commits := strings.Split(RawGitCommit, "commit")
@@ -51,7 +50,6 @@ func TestUnmarshalSingleTokenHistory(t *testing.T) {
 // stored in data/processed.go.
 func TestUnmarshalAllTokensHistory(t *testing.T) {
 	types.ClearProposalToken()
-	types.SetJournalActionFormat()
 
 	var hist []*types.History
 	commits := strings.Split(RawGitCommit, "commit")
