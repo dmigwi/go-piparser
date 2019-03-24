@@ -115,6 +115,17 @@ func CustomUnmashaller(h *History, str string, since ...time.Time) error {
 		return nil
 	}
 
+	date, err := RetrieveCMDDate(str)
+	if err != nil {
+		return err // Missing Date
+	}
+
+	if len(since) > 0 && since[0] == date {
+		// It this date matches then the record being marshalled then it already
+		// exists thus ignore it.
+		return nil
+	}
+
 	proposalToken, err := RetrieveProposalToken(str)
 	if err != nil {
 		return err // Missing proposal token
@@ -128,17 +139,6 @@ func CustomUnmashaller(h *History, str string, since ...time.Time) error {
 	author, err := RetrieveCMDAuthor(str)
 	if err != nil {
 		return err // Missing Author
-	}
-
-	date, err := RetrieveCMDDate(str)
-	if err != nil {
-		return err // Missing Date
-	}
-
-	if len(since) > 0 && since[0] == date {
-		// It this date matches then the record being marshalled already exists.
-		// Ignore it.
-		return nil
 	}
 
 	str = RetrieveAllPatchSelection(str)

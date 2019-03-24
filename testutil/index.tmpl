@@ -101,15 +101,10 @@
             var percentData = []
             var cummulativeData = []
             var hourlyVotesData = []
-
-            data = {{.Data}}
-
-            data.Yes = data.Yes.reverse()
-            data.No = data.No.reverse()
-            data.Date = data.Date.reverse()
-
             var total = 0
             var yes = 0
+
+            var data = {{.Data}}
 
             data.Date.map((n, i) => {
                 let formatedDate = new Date(n)

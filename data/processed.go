@@ -11,7 +11,7 @@ import (
 
 // go-piparser parses the politeia's github stored data to primarily fetch the
 // votes data. The votes data returned contain a time.Time field obtained from
-// the individual commit messages. The go-piparser data output can be used to
+// the individual commit timestamp. The go-piparser data output can be used to
 // do lots of things which include but not limited to ploting charts.
 // For charts: See the testutil.
 

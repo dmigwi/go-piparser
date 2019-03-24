@@ -135,3 +135,10 @@ func IsMatching(parent, matchRegex string) bool {
 	}
 	return true
 }
+
+// ReplaceAny replaces the occurence "regex" in string "parent" with replacement
+// "with" for all the possible occurences.
+func ReplaceAny(parent, regex, with string) string {
+	r := regexp.MustCompile(regex)
+	return r.ReplaceAllLiteralString(parent, with)
+}
