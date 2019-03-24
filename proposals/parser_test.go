@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dmigwi/go-piparser/v1/types"
+	"github.com/dmigwi/go-piparser/proposals/types"
 )
 
 var testDir string

@@ -30,13 +30,13 @@ To install git visit [here](https://git-scm.com/book/en/v2/Getting-Started-Insta
 ## Installation
 
 ```bash
-    go get -u github.com/dmigwi/go-piparser/v1/proposals
+    go get -u github.com/dmigwi/go-piparser/proposals
 ```
 
 ## Import go-piparser
 
 ```go
-    import "github.com/dmigwi/go-piparser/v1/proposals"
+    import "github.com/dmigwi/go-piparser/proposals"
 ```
 
 ## Initialize the Explorer
@@ -86,7 +86,7 @@ To install git visit [here](https://git-scm.com/book/en/v2/Getting-Started-Insta
     import (
         "log"
 
-        "github.com/dmigwi/go-piparser/v1/proposals"
+        "github.com/dmigwi/go-piparser/proposals"
     )
 
     func main() {

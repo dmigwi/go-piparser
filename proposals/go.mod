@@ -1,1 +1,1 @@
-module github.com/dmigwi/go-piparser/v1/proposals
+module github.com/dmigwi/go-piparser/proposals

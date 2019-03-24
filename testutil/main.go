@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dmigwi/go-piparser/v1/proposals"
+	"github.com/dmigwi/go-piparser/proposals"
 	"github.com/gorilla/mux"
 )
 
