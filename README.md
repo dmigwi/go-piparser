@@ -119,8 +119,13 @@ To install git visit [here](https://git-scm.com/book/en/v2/Getting-Started-Insta
         // Retrieve proposal updates after they happen.
         for range notifyChan {
             // set the since time value
-            since := time.Parse(time.RFC3339,"2019-03-05T00:59:18Z")
+            since, err := time.Parse(time.RFC3339,"2019-03-05T00:59:18Z")
+            if err != nil {
+                log.Fatalf("unexpected error occured: %v", err)
+            }
 
+            // Fetch the proposal since 2019-03-05T00:59:18Z in when 1hr the
+            // interval(update) is over.
             data, err = parser.ProposalUpdate(proposalToken, since)
             if err != nil {
                 log.Fatalf("unexpected error occured: %v", err)
