@@ -108,9 +108,9 @@ func (v *Votes) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// CustomUnmashaller unmarshals the string argument passed. Its not in JSON
+// CustomUnmashaller unmarshals the string argument passed. Its not in a JSON
 // format. History unmarshalling happens ONLY for the set proposal token and
-// for none if otherwise (not set).
+// for all proposal tokens available if otherwise (not set).
 func CustomUnmashaller(h *History, str string, since ...time.Time) error {
 	if isMatched := IsMatching(str, VotesJSONSignature()); !isMatched {
 		// Required string payload could not be matched.
@@ -122,9 +122,9 @@ func CustomUnmashaller(h *History, str string, since ...time.Time) error {
 		return err // Missing Date
 	}
 
-	if len(since) > 0 && since[0] == date {
-		// It this date matches then the record being marshalled then it already
-		// exists thus ignore it.
+	if len(since) > 0 && date.Equal(since[0]) {
+		// If this date matches the date in the record being unmarshalled
+		// then it already existed earlier on thus ignore it.
 		return nil
 	}
 
