@@ -209,11 +209,17 @@ func (p *Parser) proposal(proposalToken string,
 	defer types.ClearProposalToken()
 
 	var t time.Time
-	args := []string{listCommitsArg, reverseOrder, commitPatchArg, proposalToken}
+	args := []string{listCommitsArg, reverseOrder, commitPatchArg}
 
-	// Append the time limiting arguments.
+	// Append the proposal token limiting argument if it exists.
+	if proposalToken != "" {
+		args = append(args, proposalToken)
+	}
+
+	// Append the time limiting argument if it exists.
 	if len(since) > 0 && since[0] != t {
-		args = append(args, []string{sinceArg, since[0].Format(types.CmdDateFormat)}...)
+		args = append(args, []string{sinceArg,
+			since[0].Format(types.CmdDateFormat)}...)
 	}
 
 	// Fetch the data via git cmd.
