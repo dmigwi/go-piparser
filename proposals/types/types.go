@@ -44,6 +44,12 @@ type History struct {
 	Author    string
 	CommitSHA string
 	Date      time.Time
+	Patch     []*File
+}
+
+// File defines the votes cast for a single token in a commit. A commit can
+// votes cast for several commits joined together.
+type File struct {
 	Token     string
 	VotesInfo Votes
 }
@@ -112,8 +118,8 @@ func (v *Votes) UnmarshalJSON(b []byte) error {
 // format. History unmarshalling happens ONLY for the set proposal token and
 // for all proposal tokens available if otherwise (not set).
 func CustomUnmashaller(h *History, str string, since ...time.Time) error {
-	if isMatched := IsMatching(str, VotesJSONSignature()); !isMatched {
-		// Required string payload could not be matched.
+	// If no votes data detected, ignore the current str payload.
+	if isMatched := IsMatching(str, DefaultVotesCommitMsg); !isMatched {
 		return nil
 	}
 
@@ -128,11 +134,6 @@ func CustomUnmashaller(h *History, str string, since ...time.Time) error {
 		return nil
 	}
 
-	proposalToken, err := RetrieveProposalToken(str)
-	if err != nil {
-		return err // Missing proposal token
-	}
-
 	commit, err := RetrieveCMDCommit(str)
 	if err != nil {
 		return err // Missing commit SHA
@@ -143,23 +144,52 @@ func CustomUnmashaller(h *History, str string, since ...time.Time) error {
 		return err // Missing Author
 	}
 
-	str = RetrieveAllPatchSelection(str)
+	var changes []*File
 
-	str = ReplaceJournalSelection(str, "")
-	// Add the square brackets to complete the JSON string array format.
-	str = "[" + str + "]"
+	for _, filePatch := range SplitCommitDiff(str) {
 
-	var v Votes
+		// If the proposal token has been set, check if this payload has the required
+		// proposal token data. If it exists proceed otherwise ignore it.
+		if isMatched := IsMatching(filePatch, VotesJSONSignature()); !isMatched {
+			continue
+		}
 
-	if err = json.Unmarshal([]byte(str), &v); err != nil {
-		return fmt.Errorf("Unmarshalling Votes failed: %v", err)
+		proposalToken, err := RetrieveProposalToken(filePatch)
+		if err != nil {
+			return err // Missing proposal token
+		}
+
+		filePatch = RetrieveAllPatchSelection(filePatch)
+
+		filePatch = ReplaceJournalSelection(filePatch, "")
+
+		// Drop any special characters left.
+		filePatch = ReplaceAny(filePatch, `\s`, "")
+
+		// Add the square brackets and commas to complete the JSON string array format.
+		filePatch = "[" + ReplaceAny(filePatch, "}{", "},{") + "]"
+
+		var v Votes
+
+		if err = json.Unmarshal([]byte(filePatch), &v); err != nil {
+			panic(err)
+			return fmt.Errorf("Unmarshalling File failed: %v %s", err, filePatch)
+		}
+
+		// If votes data was found, append it the File patch data else ignore it.
+		if len(v) > 0 {
+			changes = append(changes, &File{proposalToken, v})
+		}
+	}
+
+	if len(changes) == 0 {
+		return nil
 	}
 
 	h.Author = author
 	h.CommitSHA = commit
 	h.Date = date
-	h.Token = proposalToken
-	h.VotesInfo = v
+	h.Patch = changes
 
 	return nil
 }
