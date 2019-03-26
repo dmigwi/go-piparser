@@ -46,13 +46,19 @@ var (
 	// It starts where the journalSelection on a text line matches and ends where
 	// the line ending characters at matched at on the same text line.
 	patchSelection = func() PiRegExp {
-		return PiRegExp(journalSelection() + `.*`)
+		return PiRegExp(`(` + journalSelection() + `[[:ascii:]]*(}\n?))`)
 	}
 
 	// anyTokenSelection matches any proposal token. A proposal token is
 	// defined by 64 alphanumeric characters which can be upper case or lower
-	// case of any letter exclusive of punctuations and white space characters.
+	// case of any letter, exclusive of punctuations and white space characters.
 	anyTokenSelection = `[A-z0-9]{64}`
+
+	// In a git commit history, the changes made per file always start with
+	// "diff --git a". commitDiff is therefore used to split the single commit
+	// string into file changes in an array. "diff --git a" is documented here:
+	// https://github.com/git/git/blob/b58f23b38a9a9f28d751311353819d3cdf6a86da/t/t4000-diff-format.sh#L29-L46
+	commitDiff = `diff --git a`
 )
 
 // VotesJSONSignature defines a part of the json string signature that matches
@@ -89,7 +95,7 @@ func RetrieveCMDDate(parent string) (time.Time, error) {
 	return time.Time{}, fmt.Errorf("missing Date from the parsed string")
 }
 
-// RetrieveCMDCommit uses cmdCommitSelection to retrieve the SHA commit value
+// RetrieveCMDCommit uses cmdCommitSelection to retrieve the commit SHA value
 // from the provided parent string.
 func RetrieveCMDCommit(parent string) (string, error) {
 	data := cmdCommitSelection.exp().FindStringSubmatch(parent)
@@ -106,16 +112,14 @@ func ReplaceJournalSelection(parent, with string) string {
 }
 
 // RetrieveAllPatchSelection uses patchSelection regex expression to fetch all
-// individual matching lines from the provided parent string. All the individually
-// matched strings are commas separated to form one single string.
+// individual matching lines from the provided parent string.
 func RetrieveAllPatchSelection(parent string) string {
 	matches := patchSelection().exp().FindAllString(parent, -1)
-	return strings.Join(matches, ",")
+	return strings.Join(matches, "")
 }
 
-// RetrieveProposalToken uses the anyTokenSelection regex to build a complete
-// regex expression to select the proposal token from the Journal selection
-// text.
+// RetrieveProposalToken uses the anyTokenSelection regex to build a regex
+// expression used to select the proposal token from the parent string.
 func RetrieveProposalToken(parent string) (string, error) {
 	regex := fmt.Sprintf(`"token":"(%s)`, anyTokenSelection)
 	data := PiRegExp(regex).exp().FindStringSubmatch(parent)
@@ -136,9 +140,15 @@ func IsMatching(parent, matchRegex string) bool {
 	return true
 }
 
-// ReplaceAny replaces the occurence "regex" in string "parent" with replacement
-// "with" for all the possible occurences.
+// ReplaceAny replaces the all occurence of "regex" in string "parent" with
+// replacement "with" for all the possible occurences.
 func ReplaceAny(parent, regex, with string) string {
 	r := regexp.MustCompile(regex)
 	return r.ReplaceAllLiteralString(parent, with)
+}
+
+// SplitCommitDiff uses the commitDiff separating string to split the string
+// into an array.
+func SplitCommitDiff(parent string) []string {
+	return strings.Split(parent, commitDiff)
 }

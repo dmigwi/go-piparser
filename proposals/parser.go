@@ -247,8 +247,8 @@ func (p *Parser) proposal(proposalToken string,
 			return nil, fmt.Errorf("CustomUnmashaller failed: %v", err)
 		}
 
-		// Do not store any empty votes data.
-		if len(h.VotesInfo) == 0 || h.Author == "" || h.CommitSHA == "" {
+		// Do not store any empty history data.
+		if len(h.Patch) == 0 || h.Author == "" || h.CommitSHA == "" {
 			continue
 		}
 

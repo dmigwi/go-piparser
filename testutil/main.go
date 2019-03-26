@@ -42,18 +42,20 @@ func handleProposal(w http.ResponseWriter, r *http.Request) {
 
 	for _, val := range data {
 		var yes, no int
-		for _, vote := range val.VotesInfo {
-			switch vote.VoteBit {
-			case "No":
-				no++
-				n++
+		for _, changes := range val.Patch {
+			for _, vote := range changes.VotesInfo {
+				switch vote.VoteBit {
+				case "No":
+					no++
+					n++
 
-			case "Yes":
-				yes++
-				y++
+				case "Yes":
+					yes++
+					y++
 
-			default:
-				log.Printf("Invalid vote bit found: %v", vote.VoteBit)
+				default:
+					log.Printf("Invalid vote bit found: %v", vote.VoteBit)
+				}
 			}
 		}
 
