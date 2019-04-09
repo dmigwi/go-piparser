@@ -100,7 +100,7 @@ func main() {
 		// is not necessary.
 	}
 
-	parser, err = proposals.NewExplorer("", "", cloneDir, handler)
+	parser, err = proposals.NewParser("", "", cloneDir, handler)
 	if err != nil {
 		log.Printf("unexpected error occured: %v", err)
 		return

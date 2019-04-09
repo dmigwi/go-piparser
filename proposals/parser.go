@@ -82,14 +82,14 @@ type Parser struct {
 	repoOwner string
 }
 
-// NewExplorer returns a Parser instance with repoName, cloneDir and repoOwner
+// NewParser returns a Parser instance with repoName, cloneDir and repoOwner
 // set. If the repoName and repoOwner provided are empty, the defaults are set.
 // If the cloneDir is not provided or an invalid path is provided, a dir in the
 // tmp folder is created and set. It also sets ups the environment by cloning
 // the repo if it doesn't exist or fetches the latest updates if it does. It
 // initiates an asynchronous fetch of hourly politiea updates and there after
 // triggers the client to fetch the new updates via the notificationHander function.
-func NewExplorer(repoOwner, repo, rootCloneDir string, notificationHander func()) (*Parser, error) {
+func NewParser(repoOwner, repo, rootCloneDir string, notificationHander func()) (*Parser, error) {
 	// Trim trailing and leading whitespaces
 	repo = strings.TrimSpace(repo)
 	repoOwner = strings.TrimSpace(repoOwner)

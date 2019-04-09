@@ -25,8 +25,8 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-// TestNewExplorer tests the setting of the default value.
-func TestNewExplorer(t *testing.T) {
+// TestNewParser tests the setting of the default value.
+func TestNewParser(t *testing.T) {
 	type testData struct {
 		repoOwner, repo, dir string
 	}
@@ -53,7 +53,7 @@ func TestNewExplorer(t *testing.T) {
 
 	for i, val := range td {
 		t.Run("Test_#"+strconv.Itoa(i), func(t *testing.T) {
-			p, err := NewExplorer(val.repoOwner, val.repo, val.dir, handler)
+			p, err := NewParser(val.repoOwner, val.repo, val.dir, handler)
 			if err != nil {
 				t.Fatalf("expected no error but found: %v", err)
 			}
