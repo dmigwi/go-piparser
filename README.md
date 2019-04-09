@@ -69,8 +69,8 @@ To install git visit [here](https://git-scm.com/book/en/v2/Getting-Started-Insta
     // https://proposals.decred.org/proposals/60adb9c0946482492889e85e9bce05c309665b3438dd85cb1a837df31fbf57fb
     proposalToken := "60adb9c0946482492889e85e9bce05c309665b3438dd85cb1a837df31fbf57fb"
 
-    // Proposal returns votes data only associated with the set proposal token. 
-    data, err := parser.Proposal(proposalToken)
+    // ProposalHistory returns votes data only associated with the set proposal token. 
+    data, err := parser.ProposalHistory(proposalToken)
 	if err != nil {
 		log.Fatalf("unexpected error occured: %v", err)
     }
@@ -109,7 +109,7 @@ To install git visit [here](https://git-scm.com/book/en/v2/Getting-Started-Insta
         }
 
         // Retrieve the proposal token's votes data.
-        data, err := parser.Proposal(proposalToken)
+        data, err := parser.ProposalHistory(proposalToken)
         if err != nil {
             log.Fatalf("unexpected error occured: %v", err)
         }
@@ -126,7 +126,7 @@ To install git visit [here](https://git-scm.com/book/en/v2/Getting-Started-Insta
 
             // Fetch the proposal since 2019-03-05T00:59:18Z in when 1hr the
             // interval(update) is over.
-            data, err = parser.ProposalUpdate(proposalToken, since)
+            data, err = parser.ProposalHistorySince(proposalToken, since)
             if err != nil {
                 log.Fatalf("unexpected error occured: %v", err)
             }
