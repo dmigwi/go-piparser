@@ -152,9 +152,9 @@ func NewExplorer(repoOwner, repo, rootCloneDir string, notificationHander func()
 	return p, nil
 }
 
-// Proposal returns the all the commits history data associated with the provided
-// proposal token. This method is thread-safe.
-func (p *Parser) Proposal(proposalToken string) ([]*types.History, error) {
+// ProposalHistory returns the all the commits history data associated with the
+// provided proposal token. This method is thread-safe.
+func (p *Parser) ProposalHistory(proposalToken string) ([]*types.History, error) {
 	p.Lock()
 	defer p.Unlock()
 
@@ -166,10 +166,10 @@ func (p *Parser) Proposal(proposalToken string) ([]*types.History, error) {
 	return p.proposal(proposalToken)
 }
 
-// ProposalUpdate returns the commits history data associated with the provided
-// proposal token and was made after the since argument time provided. This
-// method is thread-safe.
-func (p *Parser) ProposalUpdate(proposalToken string, since time.Time) ([]*types.History, error) {
+// ProposalHistorySince returns the commits history data associated with the
+// provided proposal token and was made after the since argument time provided.
+// This method is thread-safe.
+func (p *Parser) ProposalHistorySince(proposalToken string, since time.Time) ([]*types.History, error) {
 	p.Lock()
 	defer p.Unlock()
 
@@ -181,18 +181,18 @@ func (p *Parser) ProposalUpdate(proposalToken string, since time.Time) ([]*types
 	return p.proposal(proposalToken, since)
 }
 
-// Proposals returns all the commits history data for the current proposal tokens
-// available. This method is thread-safe.
-func (p *Parser) Proposals() ([]*types.History, error) {
+// ProposalsHistory returns all the commits history data for the current proposal
+// tokens available. This method is thread-safe.
+func (p *Parser) ProposalsHistory() ([]*types.History, error) {
 	p.Lock()
 	defer p.Unlock()
 
 	return p.proposal("")
 }
 
-// ProposalsUpdate returns all the commits history updates for the current
+// ProposalsHistorySince returns all the commits history updates for the current
 // proposal tokens available since the provided date. This method is thread-safe.
-func (p *Parser) ProposalsUpdate(since time.Time) ([]*types.History, error) {
+func (p *Parser) ProposalsHistorySince(since time.Time) ([]*types.History, error) {
 	p.Lock()
 	defer p.Unlock()
 

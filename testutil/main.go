@@ -31,7 +31,7 @@ func handleProposal(w http.ResponseWriter, r *http.Request) {
 	proposalToken := mux.Vars(r)["token"]
 
 	log.Printf("Retrieving details for %s ...\n", proposalToken)
-	data, err := parser.Proposal(proposalToken)
+	data, err := parser.ProposalHistory(proposalToken)
 	if err != nil {
 		log.Printf("unexpected error occured: %v", err)
 	}
