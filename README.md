@@ -16,7 +16,7 @@ Check out the full doc at [godoc.org](https://godoc.org/github.com/dmigwi/go-pip
 - [Requirement](#requirement)
 - [Installation](#installation)
 - [Import go-piparser](#import-go-piparser)
-- [Initialize the Explorer](#initialize-the-explorer)
+- [Initialize the Parser instance](#initialize-the-parser-instance)
 - [Fetch the Proposal's Votes](#fetch-the-proposal's-votes)
 - [Full Sample Program](#full-sample-program)
 - [Test Client](#test-client)
@@ -39,7 +39,7 @@ To install git visit [here](https://git-scm.com/book/en/v2/Getting-Started-Insta
     import "github.com/dmigwi/go-piparser/proposals"
 ```
 
-## Initialize the Explorer
+## Initialize the Parser instance
 
 ```go
     repoOwner := ""
@@ -52,7 +52,7 @@ To install git visit [here](https://git-scm.com/book/en/v2/Getting-Started-Insta
 		// update was queried for given proposal token.
 	}
 
-    parser, err := proposals.NewExplorer(repoOwner, repoName, cloneDir, handler)
+    parser, err := proposals.NewParser(repoOwner, repoName, cloneDir, handler)
     if err != nil {
 		log.Fatalf("unexpected error occured: %v", err)
     }
@@ -62,6 +62,7 @@ To install git visit [here](https://git-scm.com/book/en/v2/Getting-Started-Insta
 - `repoName` - defines the name of the repository holding the Politeia votes. If not set, it defaults to `mainnet`.
 - `cloneDir` - defines the directory where the said repository will be cloned into. If not set, a tmp folder is created and set.
 - `handler` - defines the function that is invoked to trigger the client updates fetch immediately after the parser tool retrieves them.
+
 ## Fetch the Proposal's Votes
 
 ```go
@@ -102,8 +103,8 @@ To install git visit [here](https://git-scm.com/book/en/v2/Getting-Started-Insta
             notifyChan <- struct{}{}
         }
 
-        // Create a new Explorer
-        parser, err := proposals.NewExplorer("", "", cloneDir, handler)
+        // Create a new Parser instance
+        parser, err := proposals.NewParser("", "", cloneDir, handler)
         if err != nil {
             log.Fatalf("unexpected error occured: %v", err)
         }
