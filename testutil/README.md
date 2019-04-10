@@ -16,9 +16,14 @@ This is a http server that parses and serves data of the proposal token set on t
 ```
 
 ## Create the tool clone directory
+- For unix based o.s.
 
 ```bash
     mkdir -p ~/playground
+```
+- For windows
+```bash
+    md %USERPROFILE%\playground
 ```
 
 ## Start Server
