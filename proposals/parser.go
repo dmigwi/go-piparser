@@ -71,6 +71,10 @@ const (
 	// the reverse order argument ensures that all commits returned are listed
 	// in chronological order.
 	reverseOrder = "--reverse"
+
+	// cloneRepoAlias defines the clone repository alias used by default instead
+	// of the actual repo name.
+	cloneRepoAlias = "prop-repo"
 )
 
 // Parser holds the clone directory, repo owner and repo name. This data is
@@ -275,7 +279,7 @@ func (p *Parser) updateEnv() error {
 	}
 
 	// full clone directory: includes the expected repository name.
-	workingDir := filepath.Join(p.cloneDir, p.repoName)
+	workingDir := filepath.Join(p.cloneDir, cloneRepoAlias)
 	_, err = os.Stat(workingDir)
 
 	switch {
@@ -299,7 +303,8 @@ func (p *Parser) updateEnv() error {
 		completeRemoteURL := fmt.Sprintf(remoteURL, p.repoOwner, p.repoName)
 
 		// Clone the remote repository into the clone directory.
-		if err := p.execCommand(gitCmd, cloneArg, completeRemoteURL); err != nil {
+		err = p.execCommand(gitCmd, cloneArg, completeRemoteURL, cloneRepoAlias)
+		if err != nil {
 			return fmt.Errorf("failed to clone %s : %v", completeRemoteURL, err)
 		}
 	}
@@ -344,14 +349,13 @@ func (p *Parser) processCommand(cmdName string, args ...string) (*exec.Cmd, erro
 
 	// set the working directory.
 	cmd.Dir = p.workingDir()
-
 	return cmd, nil
 }
 
 // workingDir return (cloneDir + repoName) directory path if the target repo
 // exists otherwise returns cloneDir as the working directory.
 func (p *Parser) workingDir() string {
-	dir := filepath.Join(p.cloneDir, p.repoName)
+	dir := filepath.Join(p.cloneDir, cloneRepoAlias)
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		dir = p.cloneDir
 	}

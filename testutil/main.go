@@ -4,6 +4,9 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
+	"runtime"
 	"sync"
 	"time"
 
@@ -89,9 +92,20 @@ func handleProposal(w http.ResponseWriter, r *http.Request) {
 	log.Println("Done.")
 }
 
+// fetch the home directory
+func homeDir() string {
+	env := "HOME"
+	if runtime.GOOS == "windows" {
+		env = "USERPROFILE"
+	} else if runtime.GOOS == "plan9" {
+		env = "home"
+	}
+	return os.Getenv(env)
+}
+
 func main() {
 	var err error
-	cloneDir := "~/playground"
+	cloneDir := filepath.Join(homeDir(), "playground")
 
 	log.Println("Setting up the environment. Please Wait...")
 
