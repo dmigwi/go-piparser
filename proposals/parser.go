@@ -100,7 +100,7 @@ var triggerChan chan struct{}
 // tmp folder is created and set. It also sets ups the environment by cloning
 // the repo if it doesn't exist or fetches the latest updates if it does. It
 // initiates an asynchronous fetch of hourly politiea updates and there after
-// triggers the client to fetch the new updates via a trigger channel if the
+// triggers the client to fetch the new updates via a signal channel if the
 // trigger flag was set and the channel isn't blocked.
 func NewParser(repoOwner, repo, rootCloneDir string) (*Parser, error) {
 	// Trim trailing and leading whitespaces
@@ -173,8 +173,9 @@ func NewParser(repoOwner, repo, rootCloneDir string) (*Parser, error) {
 	return p, nil
 }
 
-// UpdateSignal sends a signal informing the client that updates exists.
-func (p *Parser) UpdateSignal() chan<- struct{} {
+// UpdateSignal sends a read only signal channel used to inform the client that
+// some updates exists.
+func (p *Parser) UpdateSignal() <-chan struct{} {
 	p.Lock()
 	defer p.Unlock()
 
