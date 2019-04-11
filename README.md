@@ -75,7 +75,7 @@ To install git visit [here](https://git-scm.com/book/en/v2/Getting-Started-Insta
     ...
 ```
 
-## Fetch new updates via a trigger channel
+## Fetch new updates via a signal channel
 - The one hour interval at which the update signal is sent starts to count immediately
 after the `proposals.NewParser(repoOwner, repoName, cloneDir)` is invoked.
 

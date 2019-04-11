@@ -7,20 +7,20 @@ This is a http server that parses and serves data of the proposal token set on t
 - A minimum git version of `v1.5.1` released on [April 4th 2007](https://github.com/git/git/releases/tag/v1.5.1) is needed.
 
 ```bash
-    git --version
+    $ git --version
 ```
 
 ## Clone this repository
 
 ```bash
-    git clone https://github.com/dmigwi/go-piparser.git
+    $ git clone https://github.com/dmigwi/go-piparser.git
 ```
 
 ## Create the tool clone directory
 - For unix based o.s.
 
 ```bash
-    mkdir -p ~/playground
+    $ mkdir -p ~/playground
 ```
 - For windows
 ```bash
@@ -30,7 +30,7 @@ This is a http server that parses and serves data of the proposal token set on t
 ## Start Server
 
 ```bash
-    cd go-piparser/testutil
+    $ cd go-piparser/testutil
 
     $ go build . && ./testutil
     2019/03/05 11:44:09 Setting up the environment. Please Wait...
