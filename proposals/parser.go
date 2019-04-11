@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/dmigwi/go-piparser/proposals/types"
@@ -75,16 +76,23 @@ const (
 	// cloneRepoAlias defines the clone repository alias used by default instead
 	// of the actual repo name.
 	cloneRepoAlias = "prop-repo"
+
+	// updateFlag defines the flag to be set when the client want to receive updates
+	updateFlag = int32(2)
 )
 
 // Parser holds the clone directory, repo owner and repo name. This data is
 // used to query politeia data via git command line tool.
 type Parser struct {
 	sync.RWMutex
-	cloneDir  string
-	repoName  string
-	repoOwner string
+	cloneDir    string
+	repoName    string
+	repoOwner   string
+	triggerFlag int32
 }
+
+// triggerChan is a channel used to notify the client if updates are available.
+var triggerChan chan struct{}
 
 // NewParser returns a Parser instance with repoName, cloneDir and repoOwner
 // set. If the repoName and repoOwner provided are empty, the defaults are set.
@@ -92,8 +100,9 @@ type Parser struct {
 // tmp folder is created and set. It also sets ups the environment by cloning
 // the repo if it doesn't exist or fetches the latest updates if it does. It
 // initiates an asynchronous fetch of hourly politiea updates and there after
-// triggers the client to fetch the new updates via the notificationHander function.
-func NewParser(repoOwner, repo, rootCloneDir string, notificationHander func()) (*Parser, error) {
+// triggers the client to fetch the new updates via a trigger channel if the
+// trigger flag was set and the channel isn't blocked.
+func NewParser(repoOwner, repo, rootCloneDir string) (*Parser, error) {
 	// Trim trailing and leading whitespaces
 	repo = strings.TrimSpace(repo)
 	repoOwner = strings.TrimSpace(repoOwner)
@@ -147,13 +156,45 @@ func NewParser(repoOwner, repo, rootCloneDir string, notificationHander func()) 
 				return
 			}
 
-			// notificationHander is invoked to trigger the process of
-			// retrieving the newly fetched updates.
-			notificationHander()
+			// If UpdateSignal() was invoked, the trigger flag must have
+			// been set, an indication that the client wants to fetch updates
+			// after the tool retrieves them.
+			if atomic.LoadInt32(&(p.triggerFlag)) == updateFlag {
+				// Attempt to send updates signal if the channel isn't blocked
+				// otherwise ignore it till next interval.
+				select {
+				case triggerChan <- struct{}{}:
+				default:
+				}
+			}
 		}
 	}()
 
 	return p, nil
+}
+
+// UpdateSignal sends a signal informing the client that updates exists.
+func (p *Parser) UpdateSignal() chan<- struct{} {
+	p.Lock()
+	defer p.Unlock()
+
+	atomic.StoreInt32(&(p.triggerFlag), updateFlag)
+
+	if triggerChan == nil {
+		triggerChan = make(chan struct{})
+	}
+
+	return triggerChan
+}
+
+// TriggerUpdates allows the user to have a way to trigger updates retrieval
+// from github should they choose not to wait for the hourly updates or
+// are confident that new updates exists but the default update may take a while.
+// This is as a fail safe method to trigger updates but its usage
+// should be limited to very neccessary instances to avoid blocking the default
+// hourly updates retrieval system.
+func (p *Parser) TriggerUpdates() error {
+	return p.updateEnv()
 }
 
 // ProposalHistory returns the all the commits history data associated with the
@@ -262,20 +303,27 @@ func (p *Parser) proposal(proposalToken string,
 	return
 }
 
-// updateEnv ensures that a working git commandline tool is installed in the
-// underlying platform. It also checks if the required repo was cloned earlier.
-// If the repo was cloned earlier, the latest changes are pulled and if an error
-// occurs while pulling updates, the old repo version is dropped and a fresh
-// clone is made.
+// updateEnv pulls changes from github if they exists or otherwise it
+// clones the repository. It also ensures that a working git commandline tool
+// is installed in the underlying platform and has the minimum version required.
+// If the required repo was cloned earlier, only the latest changes are pulled
+// otherwise a fresh clone is made. Should an error occurs while pulling
+// updates, the old repo is dropped and a fresh clone made.
 func (p *Parser) updateEnv() error {
 	p.Lock()
 	defer p.Unlock()
 
 	// check if git exists by checking the git installation version.
-	err := p.execCommand(gitCmd, versionArg)
+	versionStr, err := p.readCommandOutput(gitCmd, versionArg)
 	if err != nil {
 		return fmt.Errorf("checking git version(%s %s) failed: %v",
 			gitCmd, versionArg, err)
+	}
+
+	// Check if a valid git version exists. A minimum of v1.5.1 is required.
+	if err = types.IsGitVersionSupported(versionStr); err != nil {
+		// invalid/unsupported git version must have been found.
+		return err
 	}
 
 	// full clone directory: includes the expected repository name.

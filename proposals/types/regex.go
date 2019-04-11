@@ -4,8 +4,10 @@
 package types
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -59,6 +61,9 @@ var (
 	// string into file changes in an array. "diff --git a" is documented here:
 	// https://github.com/git/git/blob/b58f23b38a9a9f28d751311353819d3cdf6a86da/t/t4000-diff-format.sh#L29-L46
 	commitDiff = `diff --git a`
+
+	// gitVersionSelection selects the underlying platform git semantic version.
+	gitVersionSelection PiRegExp = "([[:digit:]]+).([[:digit:]]+).([[:digit:]]+)"
 )
 
 // VotesJSONSignature defines a part of the json string signature that matches
@@ -151,4 +156,42 @@ func ReplaceAny(parent, regex, with string) string {
 // into an array.
 func SplitCommitDiff(parent string) []string {
 	return strings.Split(parent, commitDiff)
+}
+
+// IsGitVersionSupported checks if the git version in the parse string is supported.
+// An error is returned if otherwise.
+func IsGitVersionSupported(parsedStr string) error {
+	data := gitVersionSelection.exp().FindAllString(parsedStr, -1)
+	data = strings.Split(strings.Join(data, ""), ".")
+	if len(data) != 3 {
+		return ErrGitVersion
+	}
+
+	currentVersion, err := parseVersion(data)
+	if err != nil {
+		return fmt.Errorf("%v: %s", err, parsedStr)
+	}
+
+	// for each semantic version field a max of four digits value are reserved.
+	minimumRequired := int64(100050001) // => 1.5.1
+
+	if minimumRequired > currentVersion {
+		return ErrGitVersion
+	}
+
+	return nil
+}
+
+// parseVersion converts the semantic version into an int value that can be compared.
+func parseVersion(strList []string) (int64, error) {
+	str := ""
+	for _, value := range strList {
+		str = fmt.Sprintf("%s%04s", str, value)
+	}
+
+	result, err := strconv.ParseInt(str, 10, 64)
+	if err != nil {
+		return -1, errors.New("error parsing the git version")
+	}
+	return result, nil
 }

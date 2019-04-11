@@ -49,11 +49,9 @@ func TestNewParser(t *testing.T) {
 		{testROwnerWSpaces, testRepoWSpaces, invalidPath},
 	}
 
-	handler := func() {}
-
 	for i, val := range td {
 		t.Run("Test_#"+strconv.Itoa(i), func(t *testing.T) {
-			p, err := NewParser(val.repoOwner, val.repo, val.dir, handler)
+			p, err := NewParser(val.repoOwner, val.repo, val.dir)
 			if err != nil {
 				t.Fatalf("expected no error but found: %v", err)
 			}
