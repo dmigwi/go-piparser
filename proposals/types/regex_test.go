@@ -402,3 +402,39 @@ func TestRetrieveProposalToken(t *testing.T) {
 		})
 	}
 }
+
+func TestIsGitVersionSupported(t *testing.T) {
+	type testData struct {
+		ParsedStr string
+		IsError   bool
+	}
+
+	td := []testData{
+		{"..1", true},
+		{"2..1", true},
+		{"0.9.1", true},
+		{"1.9.1", false},
+		{"100.0.1", false},
+		{"10.0.0", false},
+		{"git version 1.1.1", true},
+		{"git version 1.4.1", true},
+		{"git version 1.6.1", false},
+		{"git version 2.4.1", false},
+		{"git version 2.7.1", false},
+		{"git version 2.19.1", false},
+	}
+
+	for i, val := range td {
+		t.Run("Test_#"+strconv.Itoa(i), func(t *testing.T) {
+			err := IsGitVersionSupported(val.ParsedStr)
+
+			if err != nil && !val.IsError {
+				t.Fatalf("expected no error but found %v:", err)
+			}
+
+			if err == nil && val.IsError {
+				t.Fatal("expected an error but found none")
+			}
+		})
+	}
+}

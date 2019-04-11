@@ -18,6 +18,7 @@ Check out the full doc at [godoc.org](https://godoc.org/github.com/dmigwi/go-pip
 - [Import go-piparser](#import-go-piparser)
 - [Initialize the Parser instance](#initialize-the-parser-instance)
 - [Fetch the Proposal's Votes](#fetch-the-proposal's-votes)
+- [Fetch new updates via a trigger channel](#fetch-new-updates-via-a-trigger-channel)
 - [Full Sample Program](#full-sample-program)
 - [Test Client](#test-client)
 
@@ -26,6 +27,8 @@ Check out the full doc at [godoc.org](https://godoc.org/github.com/dmigwi/go-pip
 
 - git -  The tool requires a functional git commandline installation.
 To install git visit [here](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
+
+    - A git version of `v1.5.1` released on [April 4th 2007](https://github.com/git/git/releases/tag/v1.5.1) or later is needed.
 
 ## Installation
 
@@ -46,13 +49,7 @@ To install git visit [here](https://git-scm.com/book/en/v2/Getting-Started-Insta
     repoName  := ""
     cloneDir  := "/path/to/root/clone/directory"
 
-    handler := func() {
-		// Invoked hourly to trigger retrieval of the newly fetched updates.
-		// Fetch the new Updates by including the timestamp when the last
-		// update was queried for given proposal token.
-	}
-
-    parser, err := proposals.NewParser(repoOwner, repoName, cloneDir, handler)
+    parser, err := proposals.NewParser(repoOwner, repoName, cloneDir)
     if err != nil {
 		log.Fatalf("unexpected error occured: %v", err)
     }
@@ -61,7 +58,6 @@ To install git visit [here](https://git-scm.com/book/en/v2/Getting-Started-Insta
 - `repoOwner` - defines the owner of the repository where the Politeia votes are to be queries from. If not set, it defaults to `decred-proposals`
 - `repoName` - defines the name of the repository holding the Politeia votes. If not set, it defaults to `mainnet`.
 - `cloneDir` - defines the directory where the said repository will be cloned into. If not set, a tmp folder is created and set.
-- `handler` - defines the function that is invoked to trigger the client updates fetch immediately after the parser tool retrieves them.
 
 ## Fetch the Proposal's Votes
 
@@ -77,6 +73,29 @@ To install git visit [here](https://git-scm.com/book/en/v2/Getting-Started-Insta
     }
     
     ...
+```
+
+## Fetch new updates via a signal channel
+- The one hour interval at which the update signal is sent starts to count immediately
+after the `proposals.NewParser(repoOwner, repoName, cloneDir)` is invoked.
+
+```go
+    // Updates trigger signal is sent hourly after which retrieval of the newly
+    // fetched updates can commence.
+    proposalUpdatesSignal := parser.UpdateSignal()
+    for range  proposalUpdatesSignal{
+        // set the since time value
+        since, err := time.Parse(time.RFC3339,"2019-03-05T00:59:18Z")
+        if err != nil {
+            log.Fatalf("unexpected error occured: %v", err)
+        }
+
+        // Fetch the proposal updates since 2019-03-05T00:59:18Z.
+        data, err = parser.ProposalHistorySince(proposalToken, since)
+        if err != nil {
+            log.Fatalf("unexpected error occured: %v", err)
+        }
+    }
 ```
 
 ## Full Sample Program
@@ -96,15 +115,8 @@ To install git visit [here](https://git-scm.com/book/en/v2/Getting-Started-Insta
          // Set the Proposal token
         proposalToken := "60adb9c0946482492889e85e9bce05c309665b3438dd85cb1a837df31fbf57fb"
 
-        // notifyChan will signal when updates are available.
-        notifyChan := make(chan struct{})
-
-        handler := func() {
-            notifyChan <- struct{}{}
-        }
-
         // Create a new Parser instance
-        parser, err := proposals.NewParser("", "", cloneDir, handler)
+        parser, err := proposals.NewParser("", "", cloneDir)
         if err != nil {
             log.Fatalf("unexpected error occured: %v", err)
         }
@@ -118,15 +130,15 @@ To install git visit [here](https://git-scm.com/book/en/v2/Getting-Started-Insta
         ...
 
         // Retrieve proposal updates after they happen.
-        for range notifyChan {
+        proposalUpdatesSignal := parser.UpdateSignal()
+        for range  proposalUpdatesSignal{
             // set the since time value
             since, err := time.Parse(time.RFC3339,"2019-03-05T00:59:18Z")
             if err != nil {
                 log.Fatalf("unexpected error occured: %v", err)
             }
 
-            // Fetch the proposal since 2019-03-05T00:59:18Z in when 1hr the
-            // interval(update) is over.
+            // Fetch the proposal updates since 2019-03-05T00:59:18Z.
             data, err = parser.ProposalHistorySince(proposalToken, since)
             if err != nil {
                 log.Fatalf("unexpected error occured: %v", err)

@@ -7,6 +7,7 @@ package types
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -34,6 +35,27 @@ const (
 )
 
 var proposalToken string
+
+// semVer defines the semantic version structure.
+type semVer struct {
+	Major int
+	Minor int
+	Patch int
+}
+
+// minGitVersion defines the minimum supported git version. This version
+// allows git log -p --reverse to be run. Here are the release notes:
+// https://github.com/git/git/blob/53f9a3e157dbbc901a02ac2c73346d375e24978c/Documentation/RelNotes/1.5.1.txt
+var minGitVersion = semVer{1, 5, 1}
+
+// ErrGitVersion is the default error returned if an invalid git version was found.
+var ErrGitVersion = errors.New("invalid git version found. A minimum of v" +
+	minGitVersion.String() + " was expected")
+
+// String() is the default stringer for the semVer data type.
+func (s semVer) String() string {
+	return fmt.Sprintf("%d.%d.%d", s.Major, s.Minor, s.Patch)
+}
 
 // Confirm that Votes implements the unmarshalling interface.
 var _ json.Unmarshaler = (*Votes)(nil)

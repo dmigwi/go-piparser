@@ -109,12 +109,7 @@ func main() {
 
 	log.Println("Setting up the environment. Please Wait...")
 
-	handler := func() {
-		// since this testutil does not store data, this handler implementation
-		// is not necessary.
-	}
-
-	parser, err = proposals.NewParser("", "", cloneDir, handler)
+	parser, err = proposals.NewParser("", "", cloneDir)
 	if err != nil {
 		log.Printf("unexpected error occured: %v", err)
 		return
