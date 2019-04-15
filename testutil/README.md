@@ -4,7 +4,7 @@ This is a http server that parses and serves data of the proposal token set on t
 
 
 ## Check the git version to confirm its installation
-- A minimum git version of `v1.5.1` released on [April 4th 2007](https://github.com/git/git/releases/tag/v1.5.1) is needed.
+- A minimum git version of `v1.5.1` released on [April 4th 2007](https://github.com/git/git/releases/tag/v1.5.1) is at least needed.
 
 ```bash
     $ git --version

@@ -28,7 +28,10 @@ Check out the full doc at [godoc.org](https://godoc.org/github.com/dmigwi/go-pip
 - git -  The tool requires a functional git commandline installation.
 To install git visit [here](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
 
-    - A git version of `v1.5.1` released on [April 4th 2007](https://github.com/git/git/releases/tag/v1.5.1) or later is needed.
+    - A git version of `v1.5.1` released on [April 4th 2007](https://github.com/git/git/releases/tag/v1.5.1) or one after is needed.
+
+- go - Golang installation is needed.
+    - go1.11 or one after is required.
 
 ## Installation
 

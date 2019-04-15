@@ -79,6 +79,13 @@ const (
 
 	// updateFlag defines the flag to be set when the client want to receive updates
 	updateFlag = int32(2)
+
+	// trackedRemoteURL is part of the arguments that help retrieve the clone url
+	// of the tracked repository.
+	trackedRemoteURL = "get-url"
+
+	// remoteDef defines the remote argument
+	remoteDef = "remote"
 )
 
 // Parser holds the clone directory, repo owner and repo name. This data is
@@ -331,14 +338,22 @@ func (p *Parser) updateEnv() error {
 	workingDir := filepath.Join(p.cloneDir, cloneRepoAlias)
 	_, err = os.Stat(workingDir)
 
+	completeRemoteURL := fmt.Sprintf(remoteURL, p.repoOwner, p.repoName)
+
 	switch {
 	case !os.IsNotExist(err):
-		// The working directory was found thus initiate the updates fetch process.
-		if err := p.execCommand(gitCmd, pullChangesArg, remoteURLRef); err == nil {
-			return nil
+		// The working directory was found thus check if the tracked repo is the
+		// same as the required one.
+		trackedRepo, err := p.readCommandOutput(gitCmd, remoteDef, trackedRemoteURL, remoteURLRef)
+
+		// If the required tracked repo was found initiate the updates fetch process
+		if err == nil && types.IsMatching(trackedRepo, completeRemoteURL) {
+			if err = p.execCommand(gitCmd, pullChangesArg, remoteURLRef); err == nil {
+				return nil
+			}
 		}
 
-		// git pull command failed.
+		// git pull command failed or the required tracked repo wasn't found.
 		// Drop the old repo and proceed to clone the repo a fresh.
 		if err = os.RemoveAll(workingDir); err != nil {
 			return err
@@ -348,10 +363,7 @@ func (p *Parser) updateEnv() error {
 
 	default:
 		// The required working directory could not be found or the repo update
-		// process failed.
-		completeRemoteURL := fmt.Sprintf(remoteURL, p.repoOwner, p.repoName)
-
-		// Clone the remote repository into the clone directory.
+		// process failed. Clone the remote repository into the clone directory.
 		err = p.execCommand(gitCmd, cloneArg, completeRemoteURL, cloneRepoAlias)
 		if err != nil {
 			return fmt.Errorf("failed to clone %s : %v", completeRemoteURL, err)
