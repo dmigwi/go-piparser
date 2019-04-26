@@ -32,9 +32,30 @@ const (
 	// journalActionFormat is the format of the journal action struct appended
 	// to all votes. Its a struct with the version and the journal action.
 	journalActionFormat = `{"version":"[[:digit:]]*","action":"(add)?(del)?(addlike)?"}`
+
+	// RemoteURL uses the https protocol instead of git or ssh protocol. git
+	// protocol may be faster but requires a dedicated port (9418) to be
+	// open always. ssh requires authentication which is clearly not necessary
+	// in this case scenario. Find out more on the access protcols here:
+	// https://git-scm.com/book/en/v2/Git-on-the-Server-The-Protocols
+	RemoteURL = "https://github.com/%s/%s.git"
+
+	// DirPrefix defines the temporary folder prefix.
+	DirPrefix = "go-piparser"
+
+	// CloneRepoAlias defines the clone repository alias used by default instead
+	// of the actual repo name.
+	CloneRepoAlias = "prop-repo"
 )
 
 var proposalToken string
+
+// DataSource defines the required methods needed to query the proposals data.
+type DataSource interface {
+	SetUpEnv() error
+	PullData(proposalToken string, since ...time.Time) ([]*History, error)
+	FetchProporties() (owner, name, cloneDir string)
+}
 
 // semVer defines the semantic version structure.
 type semVer struct {

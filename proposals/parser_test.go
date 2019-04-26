@@ -51,7 +51,7 @@ func TestNewParser(t *testing.T) {
 
 	for i, val := range td {
 		t.Run("Test_#"+strconv.Itoa(i), func(t *testing.T) {
-			p, err := NewParser(val.repoOwner, val.repo, val.dir)
+			p, err := NewParser(val.repoOwner, val.repo, val.dir, true)
 			if err != nil {
 				t.Fatalf("expected no error but found: %v", err)
 			}
@@ -61,37 +61,39 @@ func TestNewParser(t *testing.T) {
 				actualRepo = testRepo
 			}
 
-			if p.repoName != actualRepo {
+			setRepoOwner, setRepoName, setCloneDir := p.source.FetchProporties()
+
+			if setRepoName != actualRepo {
 				t.Fatalf("expected to find the %s repo but found %s ",
-					actualRepo, p.repoName)
+					actualRepo, setRepoName)
 			}
 
 			if val.repoOwner != "" {
 				actualOwner = testROwner
 			}
 
-			if p.repoOwner != actualOwner {
+			if setRepoOwner != actualOwner {
 				t.Fatalf("expected to find %s repo owner but found %s ",
-					actualOwner, p.repoOwner)
+					actualOwner, setRepoOwner)
 			}
 
-			if val.dir != "" && p.cloneDir != testDir && val.dir != invalidPath {
+			if val.dir != "" && setCloneDir != testDir && val.dir != invalidPath {
 				t.Fatalf("expected to find %s path but found %s path",
-					testDir, p.cloneDir)
+					testDir, setCloneDir)
 			}
 
-			if val.dir == invalidPath && !strings.Contains(p.cloneDir, DirPrefix) {
+			if val.dir == invalidPath && !strings.Contains(setCloneDir, types.DirPrefix) {
 				t.Fatalf("expected a temporary folder to have been created but it wasn't")
 			}
 
-			if val.dir == "" && !strings.Contains(p.cloneDir, DirPrefix) {
+			if val.dir == "" && !strings.Contains(setCloneDir, types.DirPrefix) {
 				t.Fatalf("expected a temporary folder to have been created but it wasn't")
 			}
 
 			// clean up
 			// drop the temporary folder created.
-			if strings.Contains(p.cloneDir, DirPrefix) {
-				os.RemoveAll(p.cloneDir)
+			if strings.Contains(setCloneDir, types.DirPrefix) {
+				os.RemoveAll(setCloneDir)
 			}
 		})
 	}

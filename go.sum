@@ -1,2 +1,4 @@
+github.com/dmigwi/go-piparser/proposals v0.0.0-20190426030541-8412e0f44f55 h1:OdHelch2TXiEFTcV75lw+PhQkI8rKOdQ6j6b0TtchT8=
+github.com/dmigwi/go-piparser/proposals v0.0.0-20190426030541-8412e0f44f55/go.mod h1:bVFHMc7PF69eSpDREy2MnoZYr8YMQjGDEUJudtQUEis=
 github.com/gorilla/mux v1.7.0 h1:tOSd0UKHQd6urX6ApfOn4XdBMY6Sh1MfxV3kmaazO+U=
 github.com/gorilla/mux v1.7.0/go.mod h1:1lud6UwP+6orDFRuTfBEV8e9/aOM/c4fVVCaMa2zaAs=
