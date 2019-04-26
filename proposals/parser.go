@@ -156,7 +156,7 @@ func NewParser(repoOwner, repo, rootCloneDir string) (*Parser, error) {
 	go func() {
 		// Initiate a repo update at intervals of 1h. Politeia updates are made hourly.
 		// https://docs.decred.org/advanced/navigating-politeia-data/#voting-and-comment-data
-		timer := time.NewTimer(1 * time.Hour)
+		timer := time.NewTicker(1 * time.Hour)
 		for range timer.C {
 			if err := p.updateEnv(); err != nil {
 				log.Fatalf("updateEnv failed: %v", err)
