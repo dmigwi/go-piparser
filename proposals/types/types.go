@@ -46,6 +46,10 @@ const (
 	// CloneRepoAlias defines the clone repository alias used by default instead
 	// of the actual repo name.
 	CloneRepoAlias = "prop-repo"
+
+	// RemoteURLRef references the remote URL used to clone the repository.
+	// 'origin' is the default set.
+	RemoteURLRef = "origin"
 )
 
 var proposalToken string

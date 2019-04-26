@@ -38,10 +38,6 @@ const (
 	// remote repository set. git pull = git fetch + git merge.
 	pullChangesArg = "pull"
 
-	// remoteURLRef references the remote URL used to clone the repository.
-	// 'origin' is the default set.
-	remoteURLRef = "origin"
-
 	// sinceArg with syntax "--since <date>" returns commits more recent than a
 	// specific date.
 	sinceArg = "--since"
@@ -102,11 +98,12 @@ func (t *Tool) SetUpEnv() error {
 	case !os.IsNotExist(err):
 		// The working directory was found thus check if the tracked repo is the
 		// same as the required one.
-		trackedRepo, err := t.readCommandOutput(gitCmd, remoteDef, trackedRemoteURL, remoteURLRef)
+		trackedRepo, err := t.readCommandOutput(gitCmd, remoteDef, trackedRemoteURL,
+			types.RemoteURLRef)
 
 		// If the required tracked repo was found initiate the updates fetch process
 		if err == nil && types.IsMatching(trackedRepo, completeRemoteURL) {
-			if err = t.execCommand(gitCmd, pullChangesArg, remoteURLRef); err == nil {
+			if err = t.execCommand(gitCmd, pullChangesArg, types.RemoteURLRef); err == nil {
 				return nil
 			}
 		}
@@ -141,14 +138,9 @@ func (t *Tool) PullData(proposalToken string, since ...time.Time) ([]*types.Hist
 		args = append(args, proposalToken)
 	}
 
-	nilTime := time.Time{}
-	var timestamp time.Time
-
 	// Append the time limiting argument if it exists.
-	if len(since) > 0 && since[0] != nilTime {
-		args = append(args, []string{sinceArg,
-			since[0].Format(types.CmdDateFormat)}...)
-		timestamp = since[0]
+	if len(since) > 0 && !since[0].IsZero() {
+		args = append(args, []string{sinceArg, since[0].Format(types.CmdDateFormat)}...)
 	}
 
 	// Fetch the data via git cmd.
@@ -157,10 +149,10 @@ func (t *Tool) PullData(proposalToken string, since ...time.Time) ([]*types.Hist
 		return nil, fmt.Errorf("fetching proposal(s) history failed: %v", err)
 	}
 
-	if nilTime == timestamp {
+	if since[0].IsZero() {
 		return constructHistory(patchData)
 	}
-	return constructHistory(patchData, timestamp)
+	return constructHistory(patchData, since[0])
 }
 
 // FetchProporties returns the set repo owner, repo name and the clone directory.

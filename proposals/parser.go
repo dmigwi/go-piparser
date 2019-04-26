@@ -18,6 +18,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dmigwi/go-piparser/proposals/gitlib"
 	"github.com/dmigwi/go-piparser/proposals/gittool"
 	"github.com/dmigwi/go-piparser/proposals/types"
 )
@@ -43,7 +44,9 @@ var triggerChan chan struct{}
 // the repo if it doesn't exist or fetches the latest updates if it does. It
 // initiates an asynchronous fetch of hourly politiea updates and there after
 // triggers the client to fetch the new updates via a signal channel if the
-// trigger flag was set and the channel isn't blocked.
+// trigger flag was set and the channel isn't blocked. isTool is an optional
+// argument that if set to true gittool package is set as the data source
+// otherwise it defaults to gitlib package as the data source.
 func NewParser(repoOwner, repo, rootCloneDir string, isTool ...bool) (*Parser, error) {
 	// Trim trailing and leading whitespaces
 	repo = strings.TrimSpace(repo)
@@ -74,7 +77,7 @@ func NewParser(repoOwner, repo, rootCloneDir string, isTool ...bool) (*Parser, e
 	if len(isTool) > 0 && isTool[0] {
 		p.source = gittool.NewDataSource(repoOwner, repo, rootCloneDir)
 	} else {
-
+		p.source = gitlib.NewDataSource(repoOwner, repo, rootCloneDir)
 	}
 
 	// If tests are running do not proceed further to clone the test git repos.
