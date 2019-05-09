@@ -1,7 +1,9 @@
 package gitlib
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +12,7 @@ import (
 	"github.com/dmigwi/go-piparser/proposals/types"
 	git "gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
+	"gopkg.in/src-d/go-git.v4/plumbing/format/diff"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
 	"gopkg.in/src-d/go-git.v4/plumbing/storer"
 )
@@ -45,22 +48,29 @@ func (l *Lib) SetUpEnv() (err error) {
 		// git.ErrRepositoryAlreadyExists error was returned.
 		l.repo, err = git.PlainOpen(workingDir)
 		if err != nil {
-			return err
+			return fmt.Errorf("git.PlainOpen: %v", err)
 		}
 
 		w, err := l.repo.Worktree()
 		if err != nil {
-			return err
+			return fmt.Errorf("fetching the work tree failed: %v", err)
 		}
 
 		remote, err := l.repo.Remote(types.RemoteURLRef)
 		if err != nil {
-			return err
+			return fmt.Errorf("fetching the remote url ref failed: %v", err)
 		}
 
 		if strings.Contains(remote.String(), completeRemoteURL) {
 			// Pull the latest changes from the origin remote and merge into the current branch
-			return w.Pull(&git.PullOptions{RemoteName: types.RemoteURLRef})
+			err = w.Pull(&git.PullOptions{RemoteName: types.RemoteURLRef})
+
+			switch err {
+			case nil, git.NoErrAlreadyUpToDate:
+				return nil
+			default:
+				return fmt.Errorf("updates Pull failed: %v", err)
+			}
 		}
 		// Incorrect remote reference URL was found. Drop the previous work space
 		// and make a fresh clone.
@@ -110,15 +120,13 @@ func (l *Lib) PullData(proposalToken string, since ...time.Time) ([]*types.Histo
 		options.From = ref.Hash()
 	}
 
-	if proposalToken != "" {
-		options.FileName = &proposalToken
-	}
-
 	// retrieves the commit history
 	cIter, err := l.repo.Log(options)
 	if err != nil {
 		return nil, fmt.Errorf("retrieving commit history failed: %v ", err)
 	}
+
+	var items []*types.History
 
 	// just iterates over the commits, printing it
 	err = cIter.ForEach(func(c *object.Commit) error {
@@ -144,12 +152,61 @@ func (l *Lib) PullData(proposalToken string, since ...time.Time) ([]*types.Histo
 		if err != nil {
 			return err
 		}
-		fmt.Printf("%+v", patch)
-		fmt.Println("\n\n")
+
+		item := types.History{
+			Author:    c.Author.String(),
+			CommitSHA: c.Hash.String(),
+			Date:      c.Committer.When,
+		}
+
+		var changes []*types.File
+		for _, filePatches := range patch.FilePatches() {
+			// ignore empty patches (binary files, submodule refs updates)
+			if len(filePatches.Chunks()) == 0 {
+				continue
+			}
+
+			if proposalToken != "" {
+				_, toFile := filePatches.Files()
+				if !strings.Contains(toFile.Path(), proposalToken) {
+					continue
+				}
+			}
+
+			fmt.Printf(" >>>> <<< %+v \n", filePatches)
+
+			for _, chunk := range filePatches.Chunks() {
+				if chunk.Type() == diff.Add {
+					// Add the square brackets and commas to complete the JSON string array format.
+					filePatch := "[" + types.ReplaceAny(chunk.Content(), "}{", "},{") + "]"
+
+					var v types.Votes
+
+					if err = json.Unmarshal([]byte(filePatch), &v); err != nil {
+						return fmt.Errorf("Unmarshalling File failed: %v %s", err, filePatch)
+					}
+
+					if len(v) > 0 {
+						changes = append(changes, &types.File{proposalToken, v})
+					}
+				}
+			}
+		}
+
+		item.Patch = changes
+
+		items = append(items, &item)
+
 		return nil
 	})
 
-	return nil, fmt.Errorf("retrieving patch failed: %v ", err)
+	if err == io.EOF || err == nil {
+		return nil, nil
+	}
+
+	fmt.Printf(" >>>>>>> %v \n", items)
+
+	return items, fmt.Errorf("retrieving patch failed: %v ", err)
 }
 
 // FetchProporties returns the set repo owner, repo name and the clone directory.

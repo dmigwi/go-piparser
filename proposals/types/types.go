@@ -219,7 +219,6 @@ func CustomUnmashaller(h *History, str string, since ...time.Time) error {
 		var v Votes
 
 		if err = json.Unmarshal([]byte(filePatch), &v); err != nil {
-			panic(err)
 			return fmt.Errorf("Unmarshalling File failed: %v %s", err, filePatch)
 		}
 

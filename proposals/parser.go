@@ -199,10 +199,8 @@ func (p *Parser) ProposalsHistorySince(since time.Time) ([]*types.History, error
 // cloned repository using the installed git command line interface tool. If
 // the optional since time argument is provided, only the proposal(s) history
 // returned was created after the since time.
-func (p *Parser) proposal(proposalToken string,
-	since ...time.Time) (items []*types.History, err error) {
-
+func (p *Parser) proposal(proposalToken string, since ...time.Time) ([]*types.History, error) {
 	defer types.ClearProposalToken()
 
-	return p.source.PullData(proposalToken, since...)
+	return p.source.PullData(proposalToken)
 }

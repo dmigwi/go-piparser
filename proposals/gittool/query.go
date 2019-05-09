@@ -149,10 +149,10 @@ func (t *Tool) PullData(proposalToken string, since ...time.Time) ([]*types.Hist
 		return nil, fmt.Errorf("fetching proposal(s) history failed: %v", err)
 	}
 
-	if since[0].IsZero() {
-		return constructHistory(patchData)
+	if len(since) > 0 && !since[0].IsZero() {
+		return constructHistory(patchData, since[0])
 	}
-	return constructHistory(patchData, since[0])
+	return constructHistory(patchData)
 }
 
 // FetchProporties returns the set repo owner, repo name and the clone directory.

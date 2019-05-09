@@ -109,7 +109,7 @@ func main() {
 
 	log.Println("Setting up the environment. Please Wait...")
 
-	parser, err = proposals.NewParser("", "", cloneDir, true)
+	parser, err = proposals.NewParser("", "", cloneDir, false)
 	if err != nil {
 		log.Printf("unexpected error occured: %v", err)
 		return
