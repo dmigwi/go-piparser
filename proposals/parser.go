@@ -154,9 +154,11 @@ func NewParser(repoOwner, repo, rootCloneDir string) (*Parser, error) {
 
 	// This git updates fetch is made asynchronous.
 	go func() {
-		// Initiate a repo update at intervals of 1h. Politeia updates are made hourly.
-		// https://docs.decred.org/advanced/navigating-politeia-data/#voting-and-comment-data
-		timer := time.NewTicker(time.Hour)
+		// Politeia updates are made at minute 58 of each hour.
+		// https://github.com/decred/politeia/blob/5a6166cf6821be072af2bfe774dd5d12a2fe9d43/politeiad/backend/gitbe/gitbe.go#L74-L76
+		// However, other updates such as creation or editing of a proposal
+		// triggers an immediate commit. Update every 5 minutes.
+		timer := time.NewTicker(5 * time.Minute)
 		for range timer.C {
 			if err := p.updateEnv(); err != nil {
 				log.Printf("updateEnv failed: %v", err)
