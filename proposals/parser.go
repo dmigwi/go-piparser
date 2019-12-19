@@ -29,7 +29,7 @@ const (
 	gitCmd = "git"
 
 	// listCommitsArg defines the git command line argument that lists the repo
-	// commit history in a reverse chronoligical order. The oldest commit is
+	// commit history in a reverse chronological order. The oldest commit is
 	// listed as the last.
 	listCommitsArg = "log"
 
@@ -106,7 +106,7 @@ var triggerChan chan struct{}
 // If the cloneDir is not provided or an invalid path is provided, a dir in the
 // tmp folder is created and set. It also sets ups the environment by cloning
 // the repo if it doesn't exist or fetches the latest updates if it does. It
-// initiates an asynchronous fetch of hourly politiea updates and there after
+// initiates an asynchronous fetch of hourly politeia updates and there after
 // triggers the client to fetch the new updates via a signal channel if the
 // trigger flag was set and the channel isn't blocked.
 func NewParser(repoOwner, repo, rootCloneDir string) (*Parser, error) {
@@ -156,11 +156,11 @@ func NewParser(repoOwner, repo, rootCloneDir string) (*Parser, error) {
 	go func() {
 		// Initiate a repo update at intervals of 1h. Politeia updates are made hourly.
 		// https://docs.decred.org/advanced/navigating-politeia-data/#voting-and-comment-data
-		timer := time.NewTicker(1 * time.Hour)
+		timer := time.NewTicker(time.Hour)
 		for range timer.C {
 			if err := p.updateEnv(); err != nil {
-				log.Fatalf("updateEnv failed: %v", err)
-				return
+				log.Printf("updateEnv failed: %v", err)
+				continue
 			}
 
 			// If UpdateSignal() was invoked, the trigger flag must have
@@ -196,11 +196,11 @@ func (p *Parser) UpdateSignal() <-chan struct{} {
 }
 
 // TriggerUpdates allows the user to have a way to trigger updates retrieval
-// from github should they choose not to wait for the hourly updates or
-// are confident that new updates exists but the default update may take a while.
-// This is as a fail safe method to trigger updates but its usage
-// should be limited to very neccessary instances to avoid blocking the default
-// hourly updates retrieval system.
+// from github should they choose not to wait for the hourly updates or are
+// confident that new updates exists but the default update may take a while.
+// This is as a fail safe method to trigger updates but its usage should be
+// limited to very necessary instances to avoid blocking the default hourly
+// updates retrieval system.
 func (p *Parser) TriggerUpdates() error {
 	return p.updateEnv()
 }
@@ -285,8 +285,8 @@ func (p *Parser) proposal(proposalToken string,
 
 	for _, entry := range data {
 		// strings.Split returns some split strings as empty or with just
-		// whitespaces and other special charactes. This happens when
-		// the seperating argument is the first in the source string or is
+		// whitespaces and other special characters. This happens when the
+		// seperating argument is the first in the source string or is
 		// surrounded by whitespaces and other special characters.
 		if len(strings.TrimSpace(entry)) == 0 {
 			continue
@@ -311,10 +311,10 @@ func (p *Parser) proposal(proposalToken string,
 	return
 }
 
-// updateEnv pulls changes from github if they exists or otherwise it
-// clones the repository. It also ensures that a working git commandline tool
-// is installed in the underlying platform and has the minimum version required.
-// If the required repo was cloned earlier, only the latest changes are pulled
+// updateEnv pulls changes from github if they exists or otherwise it clones the
+// repository. It also ensures that a working git commandline tool is installed
+// in the underlying platform and has the minimum version required. If the
+// required repo was cloned earlier, only the latest changes are pulled
 // otherwise a fresh clone is made. Should an error occurs while pulling
 // updates, the old repo is dropped and a fresh clone made.
 func (p *Parser) updateEnv() error {
